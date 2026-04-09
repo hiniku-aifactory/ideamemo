@@ -17,5 +17,7 @@ export const MOCK_USER_SETTINGS = {
   incubation_min_days: 3,
   incubation_max_days: 14,
   daily_memo_limit: 20,
+  personas: [] as string[],
+  ai_profile: {} as Record<string, unknown>,
   created_at: "2026-01-01T00:00:00Z",
 };
