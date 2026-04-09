@@ -1,0 +1,10 @@
+{
+  "name": "ideamemo",
+  "short_name": "ideamemo",
+  "description": "声で種を蒔く。つながりが芽を出す。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "icons": []
+}
