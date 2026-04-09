@@ -103,6 +103,9 @@ export const mockDb = {
       }
       return false;
     },
+    listBookmarked(): Connection[] {
+      return connections.filter((c) => c.bookmarked === true);
+    },
     deleteByIdea(ideaId: string): void {
       connections = connections.filter(
         (c) => c.idea_from_id !== ideaId && c.idea_to_id !== ideaId
