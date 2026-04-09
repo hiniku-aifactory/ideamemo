@@ -11,6 +11,7 @@ export const SEED_IDEAS: Idea[] = [
     summary: "通勤ラッシュの非合理さ。全員が同じ時間に移動する構造への疑問",
     keywords: ["通勤ラッシュ", "時間分散", "同調行動"],
     abstract_principle: "個人の合理性が集団の非合理性を生む",
+    latent_question: "なぜ人は非合理だとわかっていても同じ行動をとるのか",
     domain: "生活",
     audio_url: null,
     folder_id: null,
@@ -25,6 +26,7 @@ export const SEED_IDEAS: Idea[] = [
     summary: "混雑しているのに快適な空間設計。密度と快適性の両立",
     keywords: ["空間設計", "混雑", "快適性", "カフェ"],
     abstract_principle: "密度の高さは必ずしも不快を意味しない",
+    latent_question: "快適さを決めているのは物理的な広さではなく何なのか",
     domain: "生活",
     audio_url: null,
     folder_id: null,
@@ -39,6 +41,7 @@ export const SEED_IDEAS: Idea[] = [
     summary: "会議の沈黙問題。最初の発言者が出ないと全員が黙り続ける構造",
     keywords: ["会議", "沈黙", "同調圧力", "最初の一歩"],
     abstract_principle: "集団の行動は最初の一人に依存する",
+    latent_question: "何が集団の中の最初の一歩を阻んでいるのか",
     domain: "仕事",
     audio_url: null,
     folder_id: null,
@@ -53,6 +56,7 @@ export const SEED_IDEAS: Idea[] = [
     summary: "専門知識があっても簡単に説明できないギャップ。知識と伝達能力の乖離",
     keywords: ["説明力", "専門知識", "子供", "言語化"],
     abstract_principle: "理解と説明は別の能力である",
+    latent_question: "理解していることと伝えられることの間に何があるのか",
     domain: "学び",
     audio_url: null,
     folder_id: null,
@@ -67,6 +71,7 @@ export const SEED_IDEAS: Idea[] = [
     summary: "制約のある状況で逆に創造性が高まる体験。材料制限が発想を広げた",
     keywords: ["制約", "創造性", "料理", "即興"],
     abstract_principle: "制約は創造性の触媒になる",
+    latent_question: "なぜ選択肢が多いと逆に動けなくなるのか",
     domain: "生活",
     audio_url: null,
     folder_id: null,
@@ -81,6 +86,7 @@ export const SEED_IDEAS: Idea[] = [
     summary: "同じ環境でも視点を変えると新しい発見がある。逆回り散歩の気づき",
     keywords: ["散歩", "視点変換", "発見", "日常"],
     abstract_principle: "観察の角度を変えると同じ対象から新しい情報が得られる",
+    latent_question: "同じ環境から新しい情報を引き出す条件は何か",
     domain: "生活",
     audio_url: null,
     folder_id: null,
@@ -95,6 +101,7 @@ export const SEED_IDEAS: Idea[] = [
     summary: "パーソナライズの罠。最適化が進むほど偶然の出会いが失われる",
     keywords: ["レコメンド", "フィルターバブル", "偶然", "最適化"],
     abstract_principle: "最適化は多様性を殺す",
+    latent_question: "最適化と偶然性は共存できるのか",
     domain: "趣味",
     audio_url: null,
     folder_id: null,
@@ -137,6 +144,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-08T08:13:00Z",
   },
   {
@@ -157,6 +165,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-08T08:13:30Z",
   },
 
@@ -179,6 +188,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-07T14:31:00Z",
   },
   {
@@ -199,6 +209,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-07T14:31:30Z",
   },
 
@@ -221,6 +232,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-06T10:46:00Z",
   },
   {
@@ -241,6 +253,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-06T10:46:30Z",
   },
   {
@@ -261,6 +274,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-06T10:47:00Z",
   },
 
@@ -283,6 +297,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-05T18:21:00Z",
   },
   {
@@ -303,6 +318,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-05T18:21:30Z",
   },
 
@@ -325,6 +341,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-04T19:51:00Z",
   },
   {
@@ -345,6 +362,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-04T19:51:30Z",
   },
 
@@ -367,6 +385,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-03T07:31:00Z",
   },
   {
@@ -387,6 +406,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-03T07:31:30Z",
   },
 
@@ -409,6 +429,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-02T22:11:00Z",
   },
   {
@@ -429,6 +450,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-02T22:11:30Z",
   },
 
@@ -452,6 +474,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-08T12:00:00Z",
   },
   // idea-005（制約と創造性）× idea-007（フィルターバブル）
@@ -473,6 +496,7 @@ export const SEED_CONNECTIONS: Connection[] = [
     user_note: null,
     feedback: null,
     feedback_at: null,
+    bookmarked: false,
     created_at: "2026-04-05T20:00:00Z",
   },
 ];
