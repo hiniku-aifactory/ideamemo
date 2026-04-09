@@ -3,10 +3,17 @@
 import { useAuth } from "@/components/auth-provider";
 import { MemoCard } from "@/components/memo-card";
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { CircleUser, Settings, Search } from "lucide-react";
 import type { Idea } from "@/lib/types";
 
+const MEMO_LIMIT = 20;
+
+const FOLDER_CHIPS = ["すべて", "仕事", "生活", "学び", "趣味", "人間関係", "その他"];
+
 export default function HomePage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
+  const router = useRouter();
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [fetching, setFetching] = useState(true);
 
@@ -46,40 +53,57 @@ export default function HomePage() {
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 pt-12 pb-4">
-        <div className="flex items-center gap-3">
-          <h1
-            className="text-xl font-light"
-            style={{
-              fontFamily: "var(--font-noto-serif-jp), 'Noto Serif JP', serif",
-              color: "var(--text-primary)",
-            }}
-          >
-            ideamemo
-          </h1>
-          {ideas.length > 0 && (
-            <span
-              className="text-sm"
-              style={{
-                fontFamily: "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
-                color: "var(--text-muted)",
-              }}
-            >
-              {ideas.length}
-            </span>
-          )}
-        </div>
-        <button
-          onClick={signOut}
-          className="text-xs px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
-          style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+      <header
+        className="flex items-center justify-between px-6 pb-3"
+        style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
+      >
+        <CircleUser size={24} style={{ color: "var(--text-secondary)" }} />
+        <h1
+          className="text-xl"
+          style={{
+            fontFamily: "var(--font-noto-serif-jp), 'Noto Serif JP', serif",
+            color: "var(--text-primary)",
+            fontWeight: 300,
+          }}
         >
-          ログアウト
-        </button>
+          ideamemo
+        </h1>
+        <Settings size={20} style={{ color: "var(--text-secondary)" }} />
       </header>
 
+      {/* 検索バー */}
+      <div className="px-6 pb-3">
+        <div
+          className="flex items-center gap-2 h-10 px-3 rounded-xl"
+          style={{ background: "var(--bg-secondary)" }}
+        >
+          <Search size={16} style={{ color: "var(--text-muted)" }} />
+          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+            メモを検索
+          </span>
+        </div>
+      </div>
+
+      {/* フォルダフィルタチップ */}
+      <div className="pb-3 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-2 px-6 w-max">
+          {FOLDER_CHIPS.map((chip, i) => (
+            <span
+              key={chip}
+              className="px-3 py-1.5 rounded-[20px] text-xs whitespace-nowrap"
+              style={{
+                background: i === 0 ? "var(--accent)" : "var(--bg-secondary)",
+                color: i === 0 ? "#0A0A0A" : "var(--text-secondary)",
+              }}
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* Content */}
-      <div className="flex-1 px-6 pb-24">
+      <div className="flex-1 px-6 pb-28">
         {fetching ? (
           <div className="flex justify-center pt-20">
             <div
@@ -97,13 +121,32 @@ export default function HomePage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             {ideas.map((idea) => (
-              <MemoCard key={idea.id} idea={idea} />
+              <MemoCard
+                key={idea.id}
+                idea={idea}
+                onClick={() => router.push(`/memo/${idea.id}`)}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* メモ数表示 */}
+      {ideas.length > 0 && (
+        <div className="text-center pb-28">
+          <span
+            className="text-xs"
+            style={{
+              color: "var(--text-muted)",
+              fontFamily: "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
+            }}
+          >
+            {ideas.length}/{MEMO_LIMIT} メモ保存済み
+          </span>
+        </div>
+      )}
     </main>
   );
 }
