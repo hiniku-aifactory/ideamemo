@@ -1,5 +1,6 @@
 import type { Idea, Connection } from "@/lib/types";
 import { MOCK_USER_SETTINGS } from "./data";
+import { SEED_IDEAS, SEED_CONNECTIONS } from "./seed";
 
 type UserSettings = typeof MOCK_USER_SETTINGS;
 
@@ -22,8 +23,8 @@ export interface ChatMessage {
   created_at: string;
 }
 
-let ideas: Idea[] = [];
-let connections: Connection[] = [];
+let ideas: Idea[] = [...SEED_IDEAS];
+let connections: Connection[] = [...SEED_CONNECTIONS];
 let chatSessions: ChatSession[] = [];
 let chatMessages: ChatMessage[] = [];
 const userSettingsMap = new Map<string, UserSettings>([
@@ -160,8 +161,8 @@ export const mockDb = {
     },
   },
   reset() {
-    ideas = [];
-    connections = [];
+    ideas = [...SEED_IDEAS];
+    connections = [...SEED_CONNECTIONS];
     chatSessions = [];
     chatMessages = [];
   },
