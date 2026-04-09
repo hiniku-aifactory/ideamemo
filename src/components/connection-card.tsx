@@ -1,18 +1,30 @@
 "use client";
 
-const TYPE_LABELS: Record<string, { icon: string; label: string }> = {
-  structural_analogy: { icon: "✦", label: "構造アナロジー" },
-  causal: { icon: "⇄", label: "因果関係" },
-  contrarian: { icon: "⊘", label: "逆張り" },
-  abstract_concrete: { icon: "▽", label: "抽象-具体" },
-  same_theme: { icon: "≡", label: "同テーマ" },
+import { Layers, ArrowRightLeft, RotateCcw, Triangle, Equal } from "lucide-react";
+import type { ComponentType } from "react";
+
+interface TypeInfo {
+  icon: ComponentType<{ size?: number; style?: React.CSSProperties }>;
+  label: string;
+}
+
+const TYPE_LABELS: Record<string, TypeInfo> = {
+  structural_analogy: { icon: Layers, label: "構造アナロジー" },
+  causal: { icon: ArrowRightLeft, label: "因果関係" },
+  contrarian: { icon: RotateCcw, label: "逆張り" },
+  abstract_concrete: { icon: Triangle, label: "抽象-具体" },
+  same_theme: { icon: Equal, label: "同テーマ" },
 };
 
 interface Props {
   connectionType: string;
   reason: string;
   actionSuggestion: string;
+  sourceIdeaSummary?: string | null;
   externalTitle?: string | null;
+  externalUrl?: string | null;
+  externalSummary?: string | null;
+  sourceType?: string | null;
   animate?: boolean;
 }
 
@@ -20,10 +32,17 @@ export function ConnectionCard({
   connectionType,
   reason,
   actionSuggestion,
+  sourceIdeaSummary,
   externalTitle,
+  externalUrl,
+  externalSummary,
+  sourceType,
   animate = false,
 }: Props) {
-  const type = TYPE_LABELS[connectionType] ?? { icon: "✦", label: connectionType };
+  const type = TYPE_LABELS[connectionType] ?? TYPE_LABELS["structural_analogy"];
+  const TypeIcon = type.icon;
+
+  const rightLabel = sourceType === "past_memo" ? "過去のメモ" : "外部知識";
 
   return (
     <div
@@ -36,12 +55,63 @@ export function ConnectionCard({
           : undefined,
       }}
     >
-      {/* Type label */}
-      <p className="text-sm font-medium" style={{ color: "var(--accent)" }}>
-        {type.icon} {type.label}
-      </p>
+      {/* タイプラベル */}
+      <div className="flex items-center gap-1.5">
+        <TypeIcon size={14} style={{ color: "var(--accent)" }} />
+        <p className="text-sm font-medium" style={{ color: "var(--accent)" }}>
+          {type.label}
+        </p>
+      </div>
 
-      {/* Reason */}
+      {/* 左右カード（あなたのメモ ↔ 外部知識） */}
+      {(sourceIdeaSummary || externalTitle) && (
+        <div className="flex items-stretch gap-2 mt-3">
+          {/* 左カード */}
+          {sourceIdeaSummary && (
+            <div
+              className="flex-1 rounded-lg p-2.5"
+              style={{ background: "var(--bg-tertiary)" }}
+            >
+              <p className="text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>
+                あなたのメモ
+              </p>
+              <p
+                className="text-[13px] line-clamp-2"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {sourceIdeaSummary}
+              </p>
+            </div>
+          )}
+
+          {/* 中央矢印 */}
+          {sourceIdeaSummary && externalTitle && (
+            <div className="flex items-center">
+              <ArrowRightLeft size={16} style={{ color: "var(--accent)" }} />
+            </div>
+          )}
+
+          {/* 右カード */}
+          {externalTitle && (
+            <div
+              className="flex-1 rounded-lg p-2.5"
+              style={{ background: "var(--bg-tertiary)" }}
+            >
+              <p className="text-[10px] mb-1" style={{ color: "var(--text-muted)" }}>
+                {rightLabel}
+              </p>
+              <p
+                className="text-[13px] line-clamp-2"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {externalTitle}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* つながりの理由 */}
       <p
         className="mt-3 text-sm leading-relaxed"
         style={{ color: "var(--text-primary)", lineHeight: 1.7 }}
@@ -59,11 +129,36 @@ export function ConnectionCard({
         </p>
       </div>
 
-      {/* External knowledge reference */}
+      {/* 参照セクション */}
       {externalTitle && (
-        <p className="mt-3 text-[11px]" style={{ color: "var(--text-muted)" }}>
-          📖 {externalTitle}
-        </p>
+        <div className="mt-3">
+          <p className="text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>
+            参照
+          </p>
+          {externalUrl ? (
+            <a
+              href={externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[13px] underline"
+              style={{ color: "var(--accent)" }}
+            >
+              {externalTitle}
+            </a>
+          ) : (
+            <p className="text-[13px]" style={{ color: "var(--accent)" }}>
+              {externalTitle}
+            </p>
+          )}
+          {externalSummary && (
+            <p
+              className="text-xs mt-0.5 line-clamp-3"
+              style={{ color: "var(--text-secondary)" }}
+            >
+              {externalSummary}
+            </p>
+          )}
+        </div>
       )}
 
       <style jsx>{`

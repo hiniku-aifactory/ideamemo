@@ -41,12 +41,15 @@ export interface ConnectionResult {
   quality_score: number;
   external_knowledge_title: string | null;
   external_knowledge_url: string | null;
+  external_knowledge_summary: string | null;
+  source_idea_summary: string | null;
 }
 
-export async function discoverConnection(): Promise<ConnectionResult | null> {
+// 1メモにつき3つの接続を生成（SSEで段階的に送信するためジェネレータ的に使う）
+export async function discoverConnectionSingle(index: number): Promise<ConnectionResult | null> {
   if (MOCK) {
-    await delay(3000);
-    return MOCK_CONNECTIONS[Math.floor(Math.random() * MOCK_CONNECTIONS.length)];
+    await delay(1000);
+    return MOCK_CONNECTIONS[index] ?? null;
   }
   // TODO: Claude Opus + Brave Search real implementation
   throw new Error("Real connection discovery not implemented yet");

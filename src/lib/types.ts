@@ -32,6 +32,8 @@ export interface Connection {
   quality_score: number | null;
   external_knowledge_title: string | null;
   external_knowledge_url: string | null;
+  external_knowledge_summary: string | null;
+  source_idea_summary: string | null;
   user_note: string | null;
   created_at: string;
 }

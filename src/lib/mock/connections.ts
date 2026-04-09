@@ -9,6 +9,10 @@ export const MOCK_CONNECTIONS = [
     quality_score: 0.82,
     external_knowledge_title: "アンリ・カルティエ＝ブレッソンの撮影哲学",
     external_knowledge_url: null,
+    external_knowledge_summary:
+      "写真家ブレッソンは「決定的瞬間」の概念で知られ、同じ場所に何度も通い、異なる光と角度から被写体を観察し続けることで、唯一の瞬間を捉える手法を確立した。",
+    source_idea_summary:
+      "毎日同じ道を歩いても気づきが違う。角度を変えるとアイデアが出る。",
   },
   {
     connection_type: "structural_analogy" as const,
@@ -20,6 +24,10 @@ export const MOCK_CONNECTIONS = [
     quality_score: 0.78,
     external_knowledge_title: "制約理論とイノベーション",
     external_knowledge_url: null,
+    external_knowledge_summary:
+      "イーライ・ゴールドラットの制約理論は製造業の生産性向上に革命を起こしたが、その本質はクリエイティブ分野にも応用できる。制約がシステム全体の性能を規定するという洞察。",
+    source_idea_summary:
+      "制限があるからこそ工夫が生まれる。無制限だとかえって何も出ない。",
   },
   {
     connection_type: "abstract_concrete" as const,
@@ -31,5 +39,9 @@ export const MOCK_CONNECTIONS = [
     quality_score: 0.91,
     external_knowledge_title: "鈴木俊隆の初心の教え",
     external_knowledge_url: null,
+    external_knowledge_summary:
+      "鈴木俊隆は禅の教えを西洋に広めた僧侶。「初心者の心には多くの可能性があるが、専門家の心にはほとんどない」という言葉は、あらゆる学習と創造の場面で引用される。",
+    source_idea_summary:
+      "慣れた作業でも初心者のつもりで取り組むと新しい発見がある。",
   },
 ];
