@@ -15,7 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/", icon: Home, label: "ホーム" },
   { href: "/folders", icon: Folder, label: "フォルダ", disabled: true },
   { href: "/graph", icon: GitBranch, label: "グラフ", disabled: true },
-  { href: "/chat", icon: MessageCircle, label: "チャット", disabled: true },
+  { href: "/chat", icon: MessageCircle, label: "チャット" },
 ];
 
 export function TabBar() {

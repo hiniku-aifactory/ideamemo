@@ -2,10 +2,12 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, Copy, Share2 } from "lucide-react";
 import { ConnectionCard } from "@/components/connection-card";
 import { mockDb } from "@/lib/mock/db";
 import type { Idea, Connection } from "@/lib/types";
+import type { ChatSession } from "@/lib/mock/db";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -16,16 +18,17 @@ export default function MemoDetailPage({ params }: Props) {
   const router = useRouter();
   const [idea, setIdea] = useState<Idea | null>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(false);
   const [canShare, setCanShare] = useState(false);
 
   useEffect(() => {
-    // モックモード: mockDbから取得
     const found = mockDb.ideas.get(id);
     if (found) {
       setIdea(found);
       setConnections(mockDb.connections.listByIdea(id));
+      setChatSessions(mockDb.chatSessions.listByIdea(id));
     }
     setLoading(false);
   }, [id]);
@@ -37,23 +40,11 @@ export default function MemoDetailPage({ params }: Props) {
   const handleCopy = async () => {
     if (!idea) return;
 
-    const connectionsText = connections
-      .map(
-        (c) =>
-          `- ${c.reason}\n  → TRY: ${c.action_suggestion}`
-      )
-      .join("\n");
+    const md = `## ${idea.summary}\n\n**キーワード:** ${idea.keywords.join(", ")}\n\n${connections.map(c =>
+      `### ${c.persona_label ?? c.connection_type}\n${c.reason}\n→ TRY: ${c.action_suggestion}\n参照: ${c.external_knowledge_title ?? "なし"}`
+    ).join("\n\n")}`;
 
-    const markdown = `## ${idea.summary}
-
-**キーワード:** ${idea.keywords.join(", ")}
-**本質:** ${idea.abstract_principle}
-
-### 文字起こし
-${idea.transcript}
-
-### つながり
-${connectionsText || "なし"}`;
+    const markdown = md;
 
     await navigator.clipboard.writeText(markdown);
     setToast(true);
@@ -204,6 +195,28 @@ ${connectionsText || "なし"}`;
           </section>
         )}
 
+        {/* チャット履歴 */}
+        {chatSessions.length > 0 && (
+          <>
+            <hr style={{ borderColor: "var(--border)" }} />
+            <section>
+              <p className="text-[11px] mb-2" style={{ color: "var(--text-muted)" }}>チャット</p>
+              {chatSessions.map((session) => (
+                <Link href={`/chat?session=${session.id}`} key={session.id}>
+                  <div className="mt-2 p-3 rounded-lg" style={{ background: "var(--bg-secondary)" }}>
+                    <p className="text-sm line-clamp-1" style={{ color: "var(--text-primary)" }}>
+                      {session.context_summary}
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                      {formatRelativeTime(session.updated_at)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </section>
+          </>
+        )}
+
         {/* 区切り */}
         <hr style={{ borderColor: "var(--border)" }} />
 
@@ -221,12 +234,24 @@ ${connectionsText || "なし"}`;
       {/* トースト */}
       {toast && (
         <div
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm animate-page-enter"
-          style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-3xl text-sm animate-page-enter"
+          style={{ background: "var(--success)", color: "#fff" }}
         >
           コピーしました
         </div>
       )}
     </main>
   );
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "たった今";
+  if (minutes < 60) return `${minutes}分前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}時間前`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}日前`;
+  return new Date(dateStr).toLocaleDateString("ja-JP");
 }

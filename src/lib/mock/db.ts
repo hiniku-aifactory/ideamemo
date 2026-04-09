@@ -3,8 +3,29 @@ import { MOCK_USER_SETTINGS } from "./data";
 
 type UserSettings = typeof MOCK_USER_SETTINGS;
 
+export interface ChatSession {
+  id: string;
+  user_id: string;
+  idea_id: string | null;
+  connection_id: string | null;
+  context_type: "connection" | "combination";
+  context_summary: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
 let ideas: Idea[] = [];
 let connections: Connection[] = [];
+let chatSessions: ChatSession[] = [];
+let chatMessages: ChatMessage[] = [];
 const userSettingsMap = new Map<string, UserSettings>([
   [MOCK_USER_SETTINGS.user_id, { ...MOCK_USER_SETTINGS }],
 ]);
@@ -90,8 +111,50 @@ export const mockDb = {
       return { positive, negative };
     },
   },
+  chatSessions: {
+    list(): ChatSession[] {
+      return [...chatSessions].sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+    },
+    get(id: string): ChatSession | null {
+      return chatSessions.find((s) => s.id === id) ?? null;
+    },
+    create(session: ChatSession): void {
+      chatSessions.push(session);
+    },
+    listByIdea(ideaId: string): ChatSession[] {
+      return chatSessions
+        .filter((s) => s.idea_id === ideaId)
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    },
+    findByConnection(connectionId: string): ChatSession | null {
+      return chatSessions.find((s) => s.connection_id === connectionId) ?? null;
+    },
+    updateTimestamp(id: string): void {
+      const session = chatSessions.find((s) => s.id === id);
+      if (session) session.updated_at = new Date().toISOString();
+    },
+    deleteByIdea(ideaId: string): void {
+      const sessionIds = chatSessions.filter((s) => s.idea_id === ideaId).map((s) => s.id);
+      chatMessages = chatMessages.filter((m) => !sessionIds.includes(m.session_id));
+      chatSessions = chatSessions.filter((s) => s.idea_id !== ideaId);
+    },
+  },
+  chatMessages: {
+    listBySession(sessionId: string): ChatMessage[] {
+      return chatMessages
+        .filter((m) => m.session_id === sessionId)
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    },
+    insert(message: ChatMessage): void {
+      chatMessages.push(message);
+    },
+  },
   reset() {
     ideas = [];
     connections = [];
+    chatSessions = [];
+    chatMessages = [];
   },
 };
