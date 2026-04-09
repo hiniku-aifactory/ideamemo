@@ -4,6 +4,7 @@ import { useAuth } from "@/components/auth-provider";
 import { MemoCard } from "@/components/memo-card";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CircleUser, Settings, Search } from "lucide-react";
 import type { Idea } from "@/lib/types";
 
@@ -68,7 +69,9 @@ export default function HomePage() {
         >
           ideamemo
         </h1>
-        <Settings size={20} style={{ color: "var(--text-secondary)" }} />
+        <Link href="/settings">
+          <Settings size={20} style={{ color: "var(--text-secondary)" }} />
+        </Link>
       </header>
 
       {/* 検索バー */}
