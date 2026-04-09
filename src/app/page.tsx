@@ -127,6 +127,7 @@ export default function HomePage() {
                 key={idea.id}
                 idea={idea}
                 onClick={() => router.push(`/memo/${idea.id}`)}
+                onDelete={(id) => setIdeas((prev) => prev.filter((i) => i.id !== id))}
               />
             ))}
           </div>
