@@ -1,11 +1,8 @@
 export type Domain = "仕事" | "生活" | "趣味" | "学び" | "人間関係" | "その他";
 
 export type ConnectionType =
-  | "structural_analogy"
-  | "causal"
-  | "contrarian"
-  | "abstract_concrete"
-  | "same_theme";
+  | "external_knowledge"
+  | "combination";
 
 export interface Idea {
   id: string;
@@ -26,7 +23,8 @@ export interface Connection {
   idea_from_id: string;
   idea_to_id: string | null;
   connection_type: ConnectionType;
-  source: "ai" | "manual";
+  source: "ai" | "manual" | "combination";
+  persona_label: string | null;
   reason: string;
   action_suggestion: string;
   quality_score: number | null;
@@ -35,6 +33,8 @@ export interface Connection {
   external_knowledge_summary: string | null;
   source_idea_summary: string | null;
   user_note: string | null;
+  feedback: "positive" | "negative" | null;
+  feedback_at: string | null;
   created_at: string;
 }
 

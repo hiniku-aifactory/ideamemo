@@ -1,22 +1,10 @@
 "use client";
 
-import { Layers, ArrowRightLeft, RotateCcw, Triangle, Equal } from "lucide-react";
-import type { ComponentType } from "react";
-
-interface TypeInfo {
-  icon: ComponentType<{ size?: number; style?: React.CSSProperties }>;
-  label: string;
-}
-
-const TYPE_LABELS: Record<string, TypeInfo> = {
-  structural_analogy: { icon: Layers, label: "構造アナロジー" },
-  causal: { icon: ArrowRightLeft, label: "因果関係" },
-  contrarian: { icon: RotateCcw, label: "逆張り" },
-  abstract_concrete: { icon: Triangle, label: "抽象-具体" },
-  same_theme: { icon: Equal, label: "同テーマ" },
-};
+import { Search, ArrowRightLeft } from "lucide-react";
+import { FeedbackButton } from "./feedback-button";
 
 interface Props {
+  personaLabel?: string | null;
   connectionType: string;
   reason: string;
   actionSuggestion: string;
@@ -26,9 +14,12 @@ interface Props {
   externalSummary?: string | null;
   sourceType?: string | null;
   animate?: boolean;
+  connectionId?: string;
+  onDeepDive?: () => void;
 }
 
 export function ConnectionCard({
+  personaLabel,
   connectionType,
   reason,
   actionSuggestion,
@@ -38,10 +29,11 @@ export function ConnectionCard({
   externalSummary,
   sourceType,
   animate = false,
+  connectionId,
+  onDeepDive,
 }: Props) {
-  const type = TYPE_LABELS[connectionType] ?? TYPE_LABELS["structural_analogy"];
-  const TypeIcon = type.icon;
-
+  // ラベル表示: personaLabelがあればそれを使う。なければconnectionTypeから旧式フォールバック
+  const displayLabel = personaLabel ?? connectionType;
   const rightLabel = sourceType === "past_memo" ? "過去のメモ" : "外部知識";
 
   return (
@@ -55,18 +47,17 @@ export function ConnectionCard({
           : undefined,
       }}
     >
-      {/* タイプラベル */}
+      {/* ペルソナラベル */}
       <div className="flex items-center gap-1.5">
-        <TypeIcon size={14} style={{ color: "var(--accent)" }} />
-        <p className="text-sm font-medium" style={{ color: "var(--accent)" }}>
-          {type.label}
+        <Search size={14} style={{ color: "var(--accent)" }} />
+        <p className="text-xs font-medium" style={{ color: "var(--accent)" }}>
+          {displayLabel}
         </p>
       </div>
 
-      {/* 左右カード（あなたのメモ ↔ 外部知識） */}
+      {/* 左右カード（あなたのメモ <-> 外部知識） */}
       {(sourceIdeaSummary || externalTitle) && (
         <div className="flex items-stretch gap-2 mt-3">
-          {/* 左カード */}
           {sourceIdeaSummary && (
             <div
               className="flex-1 rounded-lg p-2.5"
@@ -84,14 +75,12 @@ export function ConnectionCard({
             </div>
           )}
 
-          {/* 中央矢印 */}
           {sourceIdeaSummary && externalTitle && (
             <div className="flex items-center">
               <ArrowRightLeft size={16} style={{ color: "var(--accent)" }} />
             </div>
           )}
 
-          {/* 右カード */}
           {externalTitle && (
             <div
               className="flex-1 rounded-lg p-2.5"
@@ -160,6 +149,24 @@ export function ConnectionCard({
           )}
         </div>
       )}
+
+      {/* フィードバック + 深掘り */}
+      <div className="flex items-center justify-between mt-4">
+        <div className="flex gap-2">
+          <FeedbackButton connectionId={connectionId} type="positive" label="使える" />
+          <FeedbackButton connectionId={connectionId} type="negative" label="ピンとこない" />
+        </div>
+        {onDeepDive && (
+          <button
+            onClick={onDeepDive}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs"
+            style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
+          >
+            <Search size={12} />
+            深掘り
+          </button>
+        )}
+      </div>
 
       <style jsx>{`
         @keyframes slide-in {

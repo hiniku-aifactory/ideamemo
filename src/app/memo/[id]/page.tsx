@@ -188,6 +188,7 @@ ${connectionsText || "なし"}`;
               {connections.map((conn) => (
                 <ConnectionCard
                   key={conn.id}
+                  personaLabel={conn.persona_label}
                   connectionType={conn.connection_type}
                   reason={conn.reason}
                   actionSuggestion={conn.action_suggestion}
@@ -195,6 +196,8 @@ ${connectionsText || "なし"}`;
                   externalTitle={conn.external_knowledge_title}
                   externalUrl={conn.external_knowledge_url}
                   externalSummary={conn.external_knowledge_summary}
+                  connectionId={conn.id}
+                  onDeepDive={() => router.push(`/chat?connection=${conn.id}`)}
                 />
               ))}
             </div>

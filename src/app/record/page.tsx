@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import { Mic, Square, Loader2, ArrowLeft } from "lucide-react";
 import { WaveformBars } from "@/components/waveform-bars";
 import { ConnectionCard } from "@/components/connection-card";
+import { mockDb } from "@/lib/mock/db";
 
 type Phase = "idle" | "recording" | "processing" | "transcription" | "structured" | "connection" | "done" | "error";
 
 interface ConnectionData {
+  id?: string;
   connection_type: string;
+  persona_label?: string | null;
   reason: string;
   action_suggestion: string;
   quality_score: number;
@@ -135,8 +138,12 @@ export default function RecordPage() {
     const blob = new Blob(chunksRef.current, { type: "audio/webm" });
     const file = new File([blob], "recording.webm", { type: blob.type });
 
+    // ペルソナ情報を取得
+    const personas = mockDb.userSettings.get("mock-user-001")?.personas ?? ["builder"];
+
     const formData = new FormData();
     formData.append("audio", file);
+    formData.append("personas", JSON.stringify(personas));
 
     let connectionIndex = 0;
 
@@ -300,6 +307,7 @@ export default function RecordPage() {
           {connections.slice(0, showConnectionCount).map((conn, i) => (
             <section key={i} className="animate-page-enter">
               <ConnectionCard
+                personaLabel={conn.persona_label}
                 connectionType={conn.connection_type}
                 reason={conn.reason}
                 actionSuggestion={conn.action_suggestion}
@@ -309,6 +317,8 @@ export default function RecordPage() {
                 externalSummary={conn.external_knowledge_summary}
                 sourceType={conn.source_type}
                 animate={i === 0}
+                connectionId={conn.id}
+                onDeepDive={() => router.push(`/chat?connection=${conn.id}`)}
               />
             </section>
           ))}

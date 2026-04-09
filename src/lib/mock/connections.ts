@@ -1,7 +1,8 @@
 export const MOCK_CONNECTIONS = [
   {
-    connection_type: "structural_analogy" as const,
+    connection_type: "external_knowledge" as const,
     source_type: "external" as const,
+    persona_label: "作っている人の視点",
     reason:
       "あなたの「角度を変えると違うものが見える」という気づき、実はカメラの世界でも同じ。写真家アンリ・カルティエ＝ブレッソンは「決定的瞬間」を、同じ場所で何度も異なる角度から待ち続けることで捉えた。",
     action_suggestion:
@@ -15,8 +16,9 @@ export const MOCK_CONNECTIONS = [
       "毎日同じ道を歩いても気づきが違う。角度を変えるとアイデアが出る。",
   },
   {
-    connection_type: "structural_analogy" as const,
+    connection_type: "external_knowledge" as const,
     source_type: "external" as const,
+    persona_label: "伸ばしている人の視点",
     reason:
       "制約が創造性を高めるという話、Twitter（現X）の140文字制限が短文コミュニケーションという新しい文化を生んだ歴史と同じ構造。意図しない制約が最もイノベーティブな結果を生むことがある。",
     action_suggestion:
@@ -30,8 +32,9 @@ export const MOCK_CONNECTIONS = [
       "制限があるからこそ工夫が生まれる。無制限だとかえって何も出ない。",
   },
   {
-    connection_type: "abstract_concrete" as const,
+    connection_type: "external_knowledge" as const,
     source_type: "external" as const,
+    persona_label: "深めている人の視点",
     reason:
       "「初心者の目」の重要性、禅仏教の「初心」（Beginner's Mind）の概念そのもの。鈴木俊隆は『禅マインド ビギナーズ・マインド』で「初心者の心には多くの可能性がある。専門家の心にはほとんどない」と説いた。",
     action_suggestion:

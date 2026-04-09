@@ -3,10 +3,11 @@ import { transcribe, structure, discoverConnectionSingle } from "@/lib/ai";
 import { mockDb } from "@/lib/mock/db";
 import { MOCK_MODE } from "@/lib/mock/data";
 import type { Idea, Connection } from "@/lib/types";
+import type { PersonaId } from "@/lib/personas";
 
 const CONNECTION_COUNT = 3;
 
-// POST — Record -> Transcribe -> Structure -> Connect x3 (SSE)
+// POST -- Record -> Transcribe -> Structure -> Connect x3 (SSE)
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
 
@@ -34,6 +35,10 @@ export async function POST(request: NextRequest) {
           controller.close();
           return;
         }
+
+        // ペルソナ情報を取得
+        const personasStr = formData.get("personas") as string | null;
+        const personas: PersonaId[] = personasStr ? JSON.parse(personasStr) : ["builder"];
 
         // 2. 文字起こし
         const transcript = await transcribe(audio);
@@ -66,8 +71,21 @@ export async function POST(request: NextRequest) {
         }
 
         // 5. 接続発見（3件を段階的にSSE送信）
-        for (let i = 0; i < CONNECTION_COUNT; i++) {
-          const connResult = await discoverConnectionSingle(i);
+        const connectionCount = Math.min(personas.length, CONNECTION_COUNT);
+        for (let i = 0; i < connectionCount; i++) {
+          let connResult;
+          if (MOCK_MODE) {
+            connResult = await discoverConnectionSingle(i, personas);
+          } else {
+            const { generateConnection } = await import("@/lib/ai/pipeline");
+            connResult = await generateConnection({
+              summary: structured.summary,
+              keywords: structured.keywords,
+              abstract_principle: structured.abstract_principle,
+              transcript,
+              personas,
+            }, personas[i]);
+          }
           if (!connResult) continue;
 
           const conn: Connection = {
@@ -76,6 +94,7 @@ export async function POST(request: NextRequest) {
             idea_to_id: null,
             connection_type: connResult.connection_type as Connection["connection_type"],
             source: "ai",
+            persona_label: connResult.persona_label,
             reason: connResult.reason,
             action_suggestion: connResult.action_suggestion,
             quality_score: connResult.quality_score,
@@ -84,6 +103,8 @@ export async function POST(request: NextRequest) {
             external_knowledge_summary: connResult.external_knowledge_summary,
             source_idea_summary: connResult.source_idea_summary,
             user_note: null,
+            feedback: null,
+            feedback_at: null,
             created_at: now,
           };
 
@@ -92,7 +113,9 @@ export async function POST(request: NextRequest) {
           }
 
           send("connection", {
+            id: conn.id,
             connection_type: conn.connection_type,
+            persona_label: conn.persona_label,
             reason: conn.reason,
             action_suggestion: conn.action_suggestion,
             quality_score: conn.quality_score,
@@ -127,7 +150,7 @@ export async function POST(request: NextRequest) {
   });
 }
 
-// GET — アイデア一覧
+// GET -- アイデア一覧
 export async function GET() {
   if (MOCK_MODE) {
     const ideas = mockDb.ideas.list();

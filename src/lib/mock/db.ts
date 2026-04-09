@@ -32,11 +32,19 @@ export const mockDb = {
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
     },
+    listByUser(_userId: string): Idea[] {
+      return [...ideas].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    },
     get(id: string): Idea | undefined {
       return ideas.find((i) => i.id === id);
     },
     count(): number {
       return ideas.length;
+    },
+    delete(id: string): void {
+      ideas = ideas.filter((i) => i.id !== id);
     },
   },
   connections: {
@@ -44,10 +52,42 @@ export const mockDb = {
       connections.push(conn);
       return conn;
     },
+    list(): Connection[] {
+      return [...connections];
+    },
     listByIdea(ideaId: string): Connection[] {
       return connections.filter(
         (c) => c.idea_from_id === ideaId || c.idea_to_id === ideaId
       );
+    },
+    listByUser(_userId: string): Connection[] {
+      return [...connections];
+    },
+    get(id: string): Connection | undefined {
+      return connections.find((c) => c.id === id);
+    },
+    updateFeedback(id: string, feedback: "positive" | "negative"): void {
+      const conn = connections.find((c) => c.id === id);
+      if (conn) {
+        conn.feedback = feedback;
+        conn.feedback_at = new Date().toISOString();
+      }
+    },
+    deleteByIdea(ideaId: string): void {
+      connections = connections.filter(
+        (c) => c.idea_from_id !== ideaId && c.idea_to_id !== ideaId
+      );
+    },
+    getFeedbackSummary(_userId: string): { positive: string[]; negative: string[] } {
+      const positive = connections
+        .filter((c) => c.feedback === "positive")
+        .slice(-5)
+        .map((c) => c.reason);
+      const negative = connections
+        .filter((c) => c.feedback === "negative")
+        .slice(-3)
+        .map((c) => c.reason);
+      return { positive, negative };
     },
   },
   reset() {
