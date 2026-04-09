@@ -27,35 +27,36 @@ export function TabBar() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex items-end justify-around"
+      className="fixed bottom-0 left-0 right-0 z-50"
       style={{
-        height: "calc(56px + env(safe-area-inset-bottom))",
-        paddingBottom: "env(safe-area-inset-bottom)",
         background: "var(--bg-primary)",
         borderTop: "1px solid var(--border)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      {/* 左2つ */}
-      {NAV_ITEMS.slice(0, 2).map((item) => (
-        <NavItemButton key={item.label} item={item} pathname={pathname} />
-      ))}
+      <div className="flex items-center justify-around h-14">
+        {/* 左2つ */}
+        {NAV_ITEMS.slice(0, 2).map((item) => (
+          <NavItemButton key={item.label} item={item} pathname={pathname} />
+        ))}
 
-      {/* 中央FAB */}
-      <Link
-        href="/record?auto=true"
-        className="flex items-center justify-center w-14 h-14 rounded-full -translate-y-3"
-        style={{
-          background: "var(--accent)",
-          boxShadow: "0 4px 12px rgba(212, 137, 106, 0.3)",
-        }}
-      >
-        <Mic size={24} style={{ color: "#0A0A0A" }} />
-      </Link>
+        {/* 中央FAB */}
+        <Link
+          href="/record?auto=true"
+          className="flex items-center justify-center w-14 h-14 rounded-full -translate-y-3"
+          style={{
+            background: "var(--accent)",
+            boxShadow: "0 4px 12px rgba(212, 137, 106, 0.3)",
+          }}
+        >
+          <Mic size={24} style={{ color: "#0A0A0A" }} />
+        </Link>
 
-      {/* 右2つ */}
-      {NAV_ITEMS.slice(2).map((item) => (
-        <NavItemButton key={item.label} item={item} pathname={pathname} />
-      ))}
+        {/* 右2つ */}
+        {NAV_ITEMS.slice(2).map((item) => (
+          <NavItemButton key={item.label} item={item} pathname={pathname} />
+        ))}
+      </div>
     </nav>
   );
 }
