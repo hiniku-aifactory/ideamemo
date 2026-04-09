@@ -104,7 +104,7 @@ export function MemoCard({ idea, onClick, onDelete }: Props) {
               <span
                 key={kw}
                 className="text-[11px] px-2 py-0.5 rounded-full"
-                style={{ background: "var(--accent)", color: "#0A0A0A" }}
+                style={{ border: "0.5px solid var(--border)", color: "var(--text-muted)" }}
               >
                 {kw}
               </span>

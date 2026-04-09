@@ -44,7 +44,7 @@ export default function FoldersPage() {
         <h1
           className="text-lg font-light"
           style={{
-            fontFamily: "var(--font-noto-serif-jp), 'Noto Serif JP', serif",
+            fontFamily: "system-ui, -apple-system, sans-serif",
             color: "var(--text-primary)",
           }}
         >

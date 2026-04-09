@@ -47,7 +47,7 @@ export default function LoginPage() {
           className="text-lg italic leading-relaxed"
           style={{
             color: "var(--text-secondary)",
-            fontFamily: "var(--font-eb-garamond), 'EB Garamond', serif",
+            fontStyle: "italic",
           }}
         >
           &ldquo;{quote.text}&rdquo;
@@ -56,7 +56,6 @@ export default function LoginPage() {
           className="mt-2 text-sm"
           style={{
             color: "var(--text-muted)",
-            fontFamily: "var(--font-eb-garamond), 'EB Garamond', serif",
           }}
         >
           — {quote.author}
@@ -69,7 +68,6 @@ export default function LoginPage() {
           className="text-[32px] font-light tracking-wide"
           style={{
             color: "var(--text-primary)",
-            fontFamily: "var(--font-noto-serif-jp), 'Noto Serif JP', serif",
           }}
         >
           ideamemo
@@ -93,7 +91,7 @@ export default function LoginPage() {
               className="w-full max-w-xs flex items-center justify-center gap-3 rounded-xl px-6 py-3.5 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{
                 background: "#ffffff",
-                color: "#1A1714",
+                color: "var(--text-primary)",
               }}
             >
               <GoogleIcon />
@@ -131,7 +129,7 @@ export default function LoginPage() {
               className="w-full rounded-xl px-6 py-3 text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{
                 background: "var(--accent)",
-                color: "#0A0A0A",
+                color: "var(--text-primary)",
               }}
             >
               {loading ? "送信中..." : "ログインリンクを送信"}

@@ -28,7 +28,7 @@ export function LimitModal({ open, onClose }: Props) {
           <a
             href="mailto:hiniku.aifactory@gmail.com"
             className="block w-full py-2.5 rounded-lg text-sm text-center"
-            style={{ background: "var(--accent)", color: "#0A0A0A" }}
+            style={{ background: "var(--accent)", color: "var(--text-primary)" }}
           >
             メールで連絡する
           </a>

@@ -29,10 +29,7 @@ export default function OnboardingPage() {
       <div className="mb-8">
         <h1
           className="text-2xl font-light leading-relaxed"
-          style={{
-            color: "var(--text-primary)",
-            fontFamily: "var(--font-noto-serif-jp), 'Noto Serif JP', serif",
-          }}
+          style={{ color: "var(--text-primary)" }}
         >
           あなたの日常に
           <br />
@@ -57,7 +54,7 @@ export default function OnboardingPage() {
           className="w-full rounded-xl py-3 text-sm font-medium transition-opacity"
           style={{
             background: "var(--accent)",
-            color: "#0A0A0A",
+            color: "var(--text-primary)",
             opacity: selected.length === 0 ? 0.4 : 1,
             pointerEvents: selected.length === 0 ? "none" : "auto",
             height: "48px",

@@ -3,11 +3,29 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Copy, Share2 } from "lucide-react";
-import { ConnectionCard } from "@/components/connection-card";
+import { KnowledgeCard, LatentQuestionHeader } from "@/components/knowledge-card";
 import { mockDb } from "@/lib/mock/db";
 import type { Idea, Connection } from "@/lib/types";
 import type { ChatSession } from "@/lib/mock/db";
+
+// ← 戻るアイコン
+function BackArrow() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// コピーアイコン
+function CopyIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <rect x="6" y="6" width="9" height="9" rx="1" stroke="currentColor" strokeWidth="1" />
+      <path d="M12 6V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h2" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  );
+}
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -21,7 +39,6 @@ export default function MemoDetailPage({ params }: Props) {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(false);
-  const [canShare, setCanShare] = useState(false);
 
   useEffect(() => {
     const found = mockDb.ideas.get(id);
@@ -33,42 +50,20 @@ export default function MemoDetailPage({ params }: Props) {
     setLoading(false);
   }, [id]);
 
-  useEffect(() => {
-    setCanShare(typeof navigator !== "undefined" && !!navigator.share);
-  }, []);
-
   const handleCopy = async () => {
     if (!idea) return;
-
-    const md = `## ${idea.summary}\n\n**キーワード:** ${idea.keywords.join(", ")}\n\n${connections.map(c =>
-      `### ${c.persona_label ?? c.connection_type}\n${c.reason}\n→ TRY: ${c.action_suggestion}\n参照: ${c.external_knowledge_title ?? "なし"}`
-    ).join("\n\n")}`;
-
-    const markdown = md;
-
-    await navigator.clipboard.writeText(markdown);
+    const text = `${idea.summary}\n\n${idea.keywords.join(", ")}\n\n${idea.transcript}`;
+    await navigator.clipboard.writeText(text);
     setToast(true);
     setTimeout(() => setToast(false), 1500);
-  };
-
-  const handleShare = async () => {
-    if (!idea) return;
-    try {
-      await navigator.share({
-        title: idea.summary,
-        text: `${idea.summary}\n\n${idea.abstract_principle}`,
-      });
-    } catch {
-      // user cancelled
-    }
   };
 
   if (loading) {
     return (
       <main className="flex min-h-dvh items-center justify-center">
         <div
-          className="h-8 w-8 rounded-full border-2 border-t-transparent animate-spin"
-          style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }}
+          className="h-6 w-6 rounded-full border border-t-transparent animate-spin"
+          style={{ borderColor: "var(--border)", borderTopColor: "transparent" }}
         />
       </main>
     );
@@ -77,59 +72,48 @@ export default function MemoDetailPage({ params }: Props) {
   if (!idea) {
     return (
       <main className="flex flex-col min-h-dvh items-center justify-center gap-4">
-        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          メモが見つかりません
+        <p className="text-[13px]" style={{ color: "var(--text-secondary)" }}>
+          Not found
         </p>
         <button
           onClick={() => router.push("/")}
-          className="text-sm px-4 py-2 rounded-lg"
-          style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
+          className="text-[11px]"
+          style={{ color: "var(--accent)" }}
         >
-          ホームに戻る
+          ← back
         </button>
       </main>
     );
   }
 
   const formattedDate = new Date(idea.created_at).toLocaleDateString("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
+    year: "numeric", month: "2-digit", day: "2-digit",
   });
   const formattedTime = new Date(idea.created_at).toLocaleTimeString("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit",
+    hour: "2-digit", minute: "2-digit",
   });
+
+  const knowledgeConnections = connections.filter((c) => c.connection_type === "external_knowledge");
 
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
       {/* Header */}
       <header
-        className="flex items-center justify-between px-6 pb-4"
+        className="flex items-center justify-between px-5 pb-3"
         style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
       >
-        <button
-          onClick={() => router.push("/")}
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <ArrowLeft size={20} />
+        <button onClick={() => router.push("/")} style={{ color: "var(--text-secondary)" }}>
+          <BackArrow />
         </button>
-        <div className="flex items-center gap-3">
-          <button onClick={handleCopy} style={{ color: "var(--text-secondary)" }}>
-            <Copy size={18} />
-          </button>
-          {canShare && (
-            <button onClick={handleShare} style={{ color: "var(--text-secondary)" }}>
-              <Share2 size={18} />
-            </button>
-          )}
-        </div>
+        <button onClick={handleCopy} style={{ color: "var(--text-secondary)" }}>
+          <CopyIcon />
+        </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-6 pb-28 space-y-6">
+      <div className="flex-1 overflow-y-auto px-5 pb-28 space-y-5">
         {/* サマリー */}
         <h2
-          className="text-base font-bold"
+          className="text-[15px] font-medium"
           style={{ color: "var(--text-primary)" }}
         >
           {idea.summary}
@@ -140,8 +124,8 @@ export default function MemoDetailPage({ params }: Props) {
           {idea.keywords.map((kw) => (
             <span
               key={kw}
-              className="text-[11px] px-2 py-0.5 rounded-full"
-              style={{ background: "var(--accent)", color: "#0A0A0A" }}
+              className="text-[10px] px-2 py-0.5 rounded"
+              style={{ border: "0.5px solid var(--border)", color: "var(--text-muted)" }}
             >
               {kw}
             </span>
@@ -149,65 +133,57 @@ export default function MemoDetailPage({ params }: Props) {
         </div>
 
         {/* 抽象原理 */}
-        <p className="text-sm italic" style={{ color: "var(--text-secondary)" }}>
-          {idea.abstract_principle}
-        </p>
+        {idea.abstract_principle && (
+          <p className="text-[13px] italic" style={{ color: "var(--text-secondary)" }}>
+            {idea.abstract_principle}
+          </p>
+        )}
 
         {/* 区切り */}
-        <hr style={{ borderColor: "var(--border)" }} />
+        <hr style={{ border: "none", borderTop: "0.5px solid var(--border-light)" }} />
 
         {/* 文字起こし */}
-        <section>
-          <p className="text-[11px] mb-2" style={{ color: "var(--text-muted)" }}>
-            聞き取れた内容
-          </p>
-          <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)", lineHeight: 1.7 }}>
-            {idea.transcript}
-          </p>
-        </section>
+        <p className="text-[13px]" style={{ color: "var(--text-primary)", lineHeight: 1.8 }}>
+          {idea.transcript}
+        </p>
 
-        {/* 区切り */}
-        {connections.length > 0 && <hr style={{ borderColor: "var(--border)" }} />}
-
-        {/* つながり */}
-        {connections.length > 0 && (
-          <section>
-            <p className="text-[11px] mb-3" style={{ color: "var(--text-muted)" }}>
-              つながり（{connections.length}件）
-            </p>
-            <div className="space-y-3">
-              {connections.map((conn) => (
-                <ConnectionCard
+        {/* 外部知識 */}
+        {knowledgeConnections.length > 0 && (
+          <>
+            <hr style={{ border: "none", borderTop: "0.5px solid var(--border-light)" }} />
+            <section>
+              {idea.latent_question && (
+                <LatentQuestionHeader question={idea.latent_question} />
+              )}
+              {knowledgeConnections.map((conn) => (
+                <KnowledgeCard
                   key={conn.id}
-                  personaLabel={conn.persona_label}
-                  connectionType={conn.connection_type}
-                  reason={conn.reason}
-                  actionSuggestion={conn.action_suggestion}
-                  sourceIdeaSummary={conn.source_idea_summary}
-                  externalTitle={conn.external_knowledge_title}
-                  externalUrl={conn.external_knowledge_url}
-                  externalSummary={conn.external_knowledge_summary}
-                  connectionId={conn.id}
-                  onDeepDive={() => router.push(`/chat?connection=${conn.id}`)}
+                  title={conn.external_knowledge_title ?? ""}
+                  description={conn.external_knowledge_summary ?? ""}
+                  sourceUrl={conn.external_knowledge_url}
+                  sourceTitle={conn.external_knowledge_title}
+                  bookmarked={conn.bookmarked ?? false}
+                  onBookmark={() => {
+                    fetch(`/api/connections/${conn.id}/bookmark`, { method: "POST" });
+                  }}
                 />
               ))}
-            </div>
-          </section>
+            </section>
+          </>
         )}
 
         {/* チャット履歴 */}
         {chatSessions.length > 0 && (
           <>
-            <hr style={{ borderColor: "var(--border)" }} />
+            <hr style={{ border: "none", borderTop: "0.5px solid var(--border-light)" }} />
             <section>
-              <p className="text-[11px] mb-2" style={{ color: "var(--text-muted)" }}>チャット</p>
               {chatSessions.map((session) => (
                 <Link href={`/chat?session=${session.id}`} key={session.id}>
                   <div className="mt-2 p-3 rounded-lg" style={{ background: "var(--bg-secondary)" }}>
-                    <p className="text-sm line-clamp-1" style={{ color: "var(--text-primary)" }}>
+                    <p className="text-[13px] line-clamp-1" style={{ color: "var(--text-primary)" }}>
                       {session.context_summary}
                     </p>
-                    <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
                       {formatRelativeTime(session.updated_at)}
                     </p>
                   </div>
@@ -217,15 +193,18 @@ export default function MemoDetailPage({ params }: Props) {
           </>
         )}
 
-        {/* 区切り */}
-        <hr style={{ borderColor: "var(--border)" }} />
-
         {/* フッター情報 */}
-        <div className="flex items-center justify-between">
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            フォルダ: {idea.folder_name || "その他"}
+        <div className="flex items-center justify-between pt-2">
+          <span
+            className="text-[10px]"
+            style={{ color: "var(--text-muted)", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}
+          >
+            {idea.folder_name || "other"}
           </span>
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+          <span
+            className="text-[10px]"
+            style={{ color: "var(--text-muted)", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}
+          >
             {formattedDate} {formattedTime}
           </span>
         </div>
@@ -234,10 +213,10 @@ export default function MemoDetailPage({ params }: Props) {
       {/* トースト */}
       {toast && (
         <div
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-3xl text-sm animate-page-enter"
-          style={{ background: "var(--success)", color: "#fff" }}
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-[11px] animate-page-enter"
+          style={{ background: "var(--bg-secondary)", color: "var(--text-primary)", border: "0.5px solid var(--border-light)" }}
         >
-          コピーしました
+          copied
         </div>
       )}
     </main>
@@ -247,11 +226,11 @@ export default function MemoDetailPage({ params }: Props) {
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "たった今";
-  if (minutes < 60) return `${minutes}分前`;
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}時間前`;
+  if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}日前`;
+  if (days < 7) return `${days}d`;
   return new Date(dateStr).toLocaleDateString("ja-JP");
 }

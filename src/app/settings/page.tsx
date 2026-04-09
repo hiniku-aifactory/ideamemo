@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+// BackArrow SVG
+function BackArrow() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 import { MOCK_MODE, MOCK_USER } from "@/lib/mock/data";
 import { mockDb } from "@/lib/mock/db";
 import { PersonaSelector } from "@/components/persona-selector";
@@ -62,14 +69,11 @@ export default function SettingsPage() {
           onClick={() => router.back()}
           style={{ color: "var(--text-secondary)" }}
         >
-          <ArrowLeft size={20} />
+          <BackArrow />
         </button>
         <h1
           className="text-lg font-light"
-          style={{
-            fontFamily: "var(--font-noto-serif-jp), 'Noto Serif JP', serif",
-            color: "var(--text-primary)",
-          }}
+          style={{ color: "var(--text-primary)" }}
         >
           設定
         </h1>
