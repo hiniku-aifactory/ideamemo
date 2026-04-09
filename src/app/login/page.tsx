@@ -150,7 +150,7 @@ export default function LoginPage() {
         {emailSent && (
           <div className="text-center">
             <p className="text-sm" style={{ color: "var(--text-primary)" }}>
-              ✉️ メールを確認してください
+              メールを確認してください
             </p>
             <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
               {email} にログインリンクを送信しました

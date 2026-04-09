@@ -1,12 +1,13 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, Hammer, TrendingUp, FlaskConical, Palette } from "lucide-react";
+import type { ComponentType } from "react";
 
 const PERSONAS = [
-  { id: "builder", emoji: "\u{1F3D7}", label: "\u4F55\u304B\u3092", sublabel: "\u4F5C\u3063\u3066\u3044\u308B", desc: "\u8D77\u696D\u3001\u958B\u767A\u3001\u5236\u4F5C" },
-  { id: "grower", emoji: "\u{1F4C8}", label: "\u4F55\u304B\u3092", sublabel: "\u4F38\u3070\u3057\u3066\u3044\u308B", desc: "\u30DE\u30FC\u30B1\u3001\u55B6\u696D\u3001\u904B\u7528" },
-  { id: "researcher", emoji: "\u{1F52C}", label: "\u4F55\u304B\u3092", sublabel: "\u6DF1\u3081\u3066\u3044\u308B", desc: "\u7814\u7A76\u3001\u5B66\u7FD2\u3001\u5C02\u9580\u8077" },
-  { id: "creator", emoji: "\u{1F3A8}", label: "\u4F55\u304B\u3092", sublabel: "\u8868\u73FE\u3057\u3066\u3044\u308B", desc: "\u30C7\u30B6\u30A4\u30F3\u3001\u6587\u7AE0\u3001\u97F3\u697D" },
+  { id: "builder", icon: Hammer, sublabel: "作っている", desc: "起業、開発、制作" },
+  { id: "grower", icon: TrendingUp, sublabel: "伸ばしている", desc: "マーケ、営業、運用" },
+  { id: "researcher", icon: FlaskConical, sublabel: "深めている", desc: "研究、学習、専門職" },
+  { id: "creator", icon: Palette, sublabel: "表現している", desc: "デザイン、文章、音楽" },
 ] as const;
 
 interface Props {
@@ -29,6 +30,7 @@ export function PersonaSelector({ selected, onChange, minSelect = 1 }: Props) {
     <div className="grid grid-cols-2 gap-3">
       {PERSONAS.map((persona) => {
         const isSelected = selected.includes(persona.id);
+        const Icon = persona.icon as ComponentType<{ size?: number; style?: React.CSSProperties }>;
         return (
           <button
             key={persona.id}
@@ -57,7 +59,7 @@ export function PersonaSelector({ selected, onChange, minSelect = 1 }: Props) {
                 <Check size={16} style={{ color: "var(--accent)" }} />
               </div>
             )}
-            <span className="text-[28px] block">{persona.emoji}</span>
+            <Icon size={28} style={{ color: "var(--accent)" }} />
             <span className="text-base font-bold block mt-2" style={{ color: "var(--text-primary)" }}>
               {persona.sublabel}
             </span>

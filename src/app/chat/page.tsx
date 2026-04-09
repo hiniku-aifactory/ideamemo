@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Send, ChevronDown, ChevronUp, MessageCircle } from "lucide-react";
+import { ArrowLeft, Send, ChevronDown, ChevronUp, MessageCircle, Pin } from "lucide-react";
 import { mockDb } from "@/lib/mock/db";
 import type { ChatSession, ChatMessage } from "@/lib/mock/db";
 
@@ -255,7 +255,7 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
             onClick={() => setContextExpanded(!contextExpanded)}
             className="w-full flex items-center gap-2 p-2.5 text-left"
           >
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>📌</span>
+            <Pin size={12} style={{ color: "var(--text-muted)" }} />
             <span
               className={`flex-1 text-xs ${contextExpanded ? "" : "line-clamp-1"}`}
               style={{ color: "var(--text-secondary)" }}
