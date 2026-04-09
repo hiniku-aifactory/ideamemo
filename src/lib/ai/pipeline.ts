@@ -2,21 +2,51 @@ import { searchBrave } from "@/lib/search/brave";
 import { PERSONA_MAP, type PersonaId } from "@/lib/personas";
 import type { ConnectionResult } from "./index";
 
+export const SEARCH_ANGLES = {
+  business_model: {
+    label: "仕組みの視点",
+    searchBias: "business model service company startup",
+    promptGuide: `同じ構造・同じ課題を解決しているビジネス、サービス、制度、広告を見つけろ。
+「こんなビジネスがある」「こんな広告がある」「こんなサービスが流行ってる」と伝える。
+具体的な社名・サービス名・数字（売上、ユーザー数、年）を必ず含める。
+ユーザーが「え、そんなのあるんだ」と思うものを優先する。`,
+  },
+  psychology: {
+    label: "人の心の視点",
+    searchBias: "psychology behavioral economics cognitive bias research",
+    promptGuide: `この気づきの裏にある人間心理、認知バイアス、行動経済学の知見を見つけろ。
+「人はこう動く」「こういう実験結果がある」と伝える。
+実験名、研究者名、年、具体的な数値を必ず含める。
+ユーザーが「だからそうなるのか」と腑に落ちるものを優先する。`,
+  },
+  cross_domain: {
+    label: "異分野の視点",
+    searchBias: "analogy pattern different field unexpected connection",
+    promptGuide: `全く別の分野で同じパターン・構造が存在する事例を見つけろ。
+生物学、物理学、音楽、建築、スポーツ、料理、軍事 — どこでもいい。
+「意外にも○○の世界でも同じことが起きている」と伝える。
+ユーザーが「面白い！そんなところで！」と感じるものを優先する。`,
+  },
+} as const;
+
+export type SearchAngle = keyof typeof SEARCH_ANGLES;
+
 interface PipelineInput {
   summary: string;
   keywords: string[];
   abstract_principle: string;
   transcript: string;
-  personas: PersonaId[];
+  searchAngle: SearchAngle;
+  personaId: PersonaId;
   userProfile?: Record<string, unknown>;
   feedbackHistory?: { positive: string[]; negative: string[] };
 }
 
 export async function generateConnection(
-  input: PipelineInput,
-  personaId: PersonaId
+  input: PipelineInput
 ): Promise<ConnectionResult> {
-  const persona = PERSONA_MAP[personaId];
+  const angle = SEARCH_ANGLES[input.searchAngle];
+  const persona = PERSONA_MAP[input.personaId];
 
   // 動的インポートでAnthropicクライアントを取得（ビルド時にAPI keyがなくてもエラーにならない）
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
@@ -32,13 +62,16 @@ export async function generateConnection(
     messages: [
       {
         role: "user",
-        content: `Generate one English web search query (3-8 words) to find external knowledge that connects to this memo from the angle: ${persona.searchAngle}
+        content: `Generate one English web search query (3-8 words) to find surprising, specific external knowledge.
 
 Memo summary: ${input.summary}
 Keywords: ${input.keywords.join(", ")}
 Core principle: ${input.abstract_principle}
 
-The query should find specific examples, case studies, or research — not generic information.`,
+Search angle: ${angle.searchBias}
+User interest bias: ${persona.searchAngle}
+
+The query should find SPECIFIC examples (company names, study names, product names) — not generic concepts.`,
       },
     ],
   });
@@ -63,22 +96,28 @@ The query should find specific examples, case studies, or research — not gener
   const synthesisResponse = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 500,
-    system: `あなたはリサーチャー。ユーザーの気づきに関連する外部知識を見つけて、事実を端的に紐づける。
+    system: `あなたは知的好奇心を刺激するリサーチャー。
+ユーザーの日常の気づきに対して「え、そうなの？」「面白い！」と思える外部知識を紐づける。
 
+# あなたの角度
+${angle.promptGuide}
+
+# ユーザーの関心傾向
 ${persona.promptInstruction}
 ${profileSection}
 ${fbSection}
 
 # 出力ルール
-- 見出し: その外部知識を一言で表す名詞句（10-20字）
-- 説明: 事実のみ。2-3文。数字・社名・年号を含める
-- 命令しない。提案しない。事実を述べる
-- 「〜かもしれません」「〜してみてください」禁止
+- 見出し: その外部知識を一言で表す（10-25字）。固有名詞を含めること
+- 説明: 2-3文。具体的な数字・社名・年号・実験名を含める
+- 最後の1文で「ユーザーの気づきとどう繋がるか」を1行で示す（ただし命令しない）
+- 「〜してみてください」「〜かもしれません」禁止
+- 断定調で書く。事実は事実として述べる
 - JSON形式のみ出力`,
     messages: [
       {
         role: "user",
-        content: `# メモ
+        content: `# ユーザーの気づき
 要点: ${input.summary}
 キーワード: ${input.keywords.join(", ")}
 本質: ${input.abstract_principle}
@@ -89,8 +128,8 @@ ${searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.description}\nURL: ${r
 
 以下のJSON形式で知識を1つ紐づけ:
 {
-  "title": "見出し（名詞句、10-20字）",
-  "description": "事実の説明（2-3文）",
+  "title": "見出し（固有名詞を含む、10-25字）",
+  "description": "事実の説明（2-3文、数字・固有名詞必須）+ 気づきとの接続1文",
   "source_url": "URL",
   "source_title": "引用元タイトル",
   "quality_score": 0.0-1.0
@@ -106,7 +145,7 @@ ${searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.description}\nURL: ${r
   return {
     connection_type: "external_knowledge",
     source_type: "external",
-    persona_label: persona.label,
+    persona_label: angle.label,
     title: parsed.title ?? "",
     description: parsed.description ?? "",
     source_url: parsed.source_url ?? null,

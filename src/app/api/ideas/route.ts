@@ -7,6 +7,7 @@ import type { Idea, Connection } from "@/lib/types";
 import type { PersonaId } from "@/lib/personas";
 
 const CONNECTION_COUNT = 3;
+const SEARCH_ANGLES = ["business_model", "psychology", "cross_domain"] as const;
 const MEMO_LIMIT = 20;
 
 // POST -- Record -> Transcribe -> Structure -> Connect x3 (SSE)
@@ -89,12 +90,12 @@ export async function POST(request: NextRequest) {
           mockDb.ideas.insert(idea);
         }
 
-        // 5. 接続発見（3件を段階的にSSE送信）
-        const connectionCount = Math.min(personas.length, CONNECTION_COUNT);
-        for (let i = 0; i < connectionCount; i++) {
+        // 5. 接続発見（常に3件を段階的にSSE送信）
+        const primaryPersona = personas[0] ?? "builder";
+        for (let i = 0; i < CONNECTION_COUNT; i++) {
           let connResult;
           if (MOCK_MODE) {
-            connResult = await discoverConnectionSingle(i, personas);
+            connResult = await discoverConnectionSingle(i);
           } else {
             const { generateConnection } = await import("@/lib/ai/pipeline");
             connResult = await generateConnection({
@@ -102,8 +103,9 @@ export async function POST(request: NextRequest) {
               keywords: structured.keywords,
               abstract_principle: structured.abstract_principle,
               transcript,
-              personas,
-            }, personas[i]);
+              searchAngle: SEARCH_ANGLES[i],
+              personaId: primaryPersona,
+            });
           }
           if (!connResult) continue;
 

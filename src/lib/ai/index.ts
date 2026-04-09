@@ -1,7 +1,6 @@
 import { MOCK_TRANSCRIPTS } from "@/lib/mock/transcription";
 import { MOCK_STRUCTURES } from "@/lib/mock/structured";
 import { MOCK_CONNECTIONS } from "@/lib/mock/connections";
-import type { PersonaId } from "@/lib/personas";
 
 const MOCK = process.env.NEXT_PUBLIC_MOCK_MODE === "true";
 
@@ -52,11 +51,10 @@ export interface ConnectionResult {
   source_idea_summary: string | null;
 }
 
-const PERSONA_LABELS = ["作っている人の視点", "伸ばしている人の視点", "深めている人の視点"];
+const ANGLE_LABELS = ["仕組みの視点", "人の心の視点", "異分野の視点"];
 
 export async function discoverConnectionSingle(
-  index: number,
-  _personas?: PersonaId[]
+  index: number
 ): Promise<ConnectionResult | null> {
   if (MOCK) {
     await delay(1000);
@@ -65,7 +63,7 @@ export async function discoverConnectionSingle(
     return {
       ...mock,
       connection_type: "external_knowledge",
-      persona_label: PERSONA_LABELS[index] ?? "作っている人の視点",
+      persona_label: ANGLE_LABELS[index] ?? "仕組みの視点",
       title: mock.external_knowledge_title ?? "",
       description: mock.external_knowledge_summary ?? "",
       source_url: mock.external_knowledge_url ?? null,
