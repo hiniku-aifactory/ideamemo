@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { MOCK_MODE, MOCK_USER } from "@/lib/mock/data";
+import { mockDb } from "@/lib/mock/db";
 
 interface User {
   id: string;
@@ -59,7 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (MOCK_MODE) {
       localStorage.setItem("mock_logged_in", "true");
       setUser(MOCK_USER as User);
-      window.location.href = "/";
+      const settings = mockDb.userSettings.get("mock-user-001");
+      window.location.href = settings?.personas?.length ? "/" : "/onboarding";
       return;
     }
     const { createClient } = await import("@/lib/supabase/client");
@@ -74,7 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (MOCK_MODE) {
       localStorage.setItem("mock_logged_in", "true");
       setUser(MOCK_USER as User);
-      window.location.href = "/";
+      const settings = mockDb.userSettings.get("mock-user-001");
+      window.location.href = settings?.personas?.length ? "/" : "/onboarding";
       return {};
     }
     const { createClient } = await import("@/lib/supabase/client");
