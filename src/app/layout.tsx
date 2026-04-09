@@ -1,12 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { TimeGradientProvider } from "@/components/time-gradient-provider";
 import { AuthProvider } from "@/components/auth-provider";
 import { TabBar } from "@/components/tab-bar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ideamemo — 声で種を蒔く。つながりが芽を出す。",
-  description: "音声メモ → AI構造化 → 意外な繋がり発見。アイデアが育つ個人思考ツール。",
+  title: "ideamemo",
+  description: "声で気づきを貯める。AIが外の知識と紐づける。",
   manifest: "/manifest.json",
 };
 
@@ -16,7 +15,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
-  themeColor: "#0A0A0A",
+  themeColor: "#FAFAFA",
 };
 
 export default function RootLayout({
@@ -37,17 +36,15 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;1,400&family=JetBrains+Mono:wght@400&family=Noto+Sans+JP:wght@400;500&family=Noto+Serif+JP:wght@300;400&display=swap"
+          href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap"
           rel="stylesheet"
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <TimeGradientProvider>
-          <AuthProvider>
-            {children}
-            <TabBar />
-          </AuthProvider>
-        </TimeGradientProvider>
+        <AuthProvider>
+          {children}
+          <TabBar />
+        </AuthProvider>
       </body>
     </html>
   );

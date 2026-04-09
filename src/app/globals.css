@@ -1,32 +1,30 @@
 @import "tailwindcss";
 
-/* === ideamemo Design Tokens (DESIGN.md §2) === */
+/* === ideamemo Design Tokens (DESIGN_v2.md) === */
 
 :root {
-  --bg-primary: #0A0A0A;
-  --bg-secondary: #141414;
-  --bg-tertiary: #1E1E1E;
-  --text-primary: #E8E4DE;
-  --text-secondary: #8A8580;
-  --text-muted: #4A4744;
-  --border: #2A2725;
-  --accent: #D4896A;
-  --accent-dim: #8B5A42;
-  --success: #6B9E78;
-  --error: #C4635A;
-  color-scheme: dark;
-}
+  --bg-primary: #FAFAFA;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F5F5F3;
 
-.light {
-  --bg-primary: #FAF8F5;
-  --bg-secondary: #F0EDE8;
-  --bg-tertiary: #E8E4DE;
-  --text-primary: #1A1714;
-  --text-secondary: #6B6560;
-  --text-muted: #A8A29E;
-  --border: #DDD8D2;
-  --accent: #C47A5A;
-  --accent-dim: #D4A088;
+  --text-primary: #222222;
+  --text-body: #555555;
+  --text-secondary: #888888;
+  --text-muted: #BBBBBB;
+  --text-hint: #CCCCCC;
+
+  --border: #E0E0E0;
+  --border-light: #EBEBEB;
+  --border-strong: #999999;
+
+  --accent: #6B7B8D; /* リンクのみ */
+  --accent-dim: #6B7B8D;
+
+  --error: #C44;
+
+  --font-primary: system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
   color-scheme: light;
 }
 
@@ -35,29 +33,30 @@
   --color-bg-secondary: var(--bg-secondary);
   --color-bg-tertiary: var(--bg-tertiary);
   --color-text-primary: var(--text-primary);
+  --color-text-body: var(--text-body);
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
+  --color-text-hint: var(--text-hint);
   --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-border-strong: var(--border-strong);
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
-  --color-success: var(--success);
   --color-error: var(--error);
-  --font-serif: var(--font-noto-serif-jp);
-  --font-sans: var(--font-noto-sans-jp);
-  --font-mono: var(--font-jetbrains-mono);
-  --font-garamond: var(--font-eb-garamond);
+  --font-mono: var(--font-mono);
 }
 
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-noto-sans-jp), 'Noto Sans JP', sans-serif;
-  line-height: 1.7;
+  font-family: system-ui, -apple-system, sans-serif;
+  line-height: 1.8;
   -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-noto-serif-jp), 'Noto Serif JP', serif;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 500;
   line-height: 1.4;
 }
 
@@ -96,7 +95,7 @@ h1, h2, h3, h4, h5, h6 {
   right: 0;
   z-index: 50;
   background: var(--bg-primary);
-  border-top: 1px solid var(--border);
+  border-top: 0.5px solid var(--border-light);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -107,27 +106,10 @@ h1, h2, h3, h4, h5, h6 {
   height: 56px;
 }
 
-.bottom-nav-fab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 4px 12px rgba(212, 137, 106, 0.3);
-  transform: translateY(-8px);
-  flex-shrink: 0;
-}
-
 .bottom-nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
   padding: 8px 0;
-}
-
-.bottom-nav-label {
-  font-size: 10px;
 }
