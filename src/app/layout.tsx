@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { TimeGradientProvider } from "@/components/time-gradient-provider";
 import { AuthProvider } from "@/components/auth-provider";
+import { TabBar } from "@/components/tab-bar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -43,6 +44,7 @@ export default function RootLayout({
         <TimeGradientProvider>
           <AuthProvider>
             {children}
+            <TabBar />
           </AuthProvider>
         </TimeGradientProvider>
       </body>
