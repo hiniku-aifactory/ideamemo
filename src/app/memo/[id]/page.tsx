@@ -101,7 +101,7 @@ export default function MemoDetailPage({ params }: Props) {
       <div className="flex-1 overflow-y-auto px-5 pb-28 space-y-5">
         {/* サマリー */}
         <h2
-          className="text-[15px] font-medium"
+          className="text-[15px] font-semibold"
           style={{ color: "var(--text-primary)" }}
         >
           {idea.summary}

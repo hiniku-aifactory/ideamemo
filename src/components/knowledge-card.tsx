@@ -64,7 +64,7 @@ export function KnowledgeCard({ title, description, sourceUrl, sourceTitle, book
       {/* コンテンツ */}
       <div className="flex-1 pb-4 min-w-0">
         <p
-          className="text-[13px] font-medium"
+          className="text-[13px] font-semibold"
           style={{ color: "var(--text-body, var(--text-primary))" }}
         >
           {title}
@@ -119,7 +119,7 @@ export function LatentQuestionHeader({ question }: { question: string }) {
         <circle cx="10" cy="10" r="1.5" fill="#BBBBBB" />
       </svg>
       <p
-        className="text-[13px] italic"
+        className="text-[13px] font-medium italic"
         style={{ color: "var(--text-secondary)" }}
       >
         {question}

@@ -264,7 +264,7 @@ export default function RecordPage() {
           {result.structured && (
             <section className="animate-page-enter">
               <p
-                className="text-[15px] font-medium"
+                className="text-[15px] font-semibold"
                 style={{ color: "var(--text-primary)" }}
               >
                 {result.structured.summary}

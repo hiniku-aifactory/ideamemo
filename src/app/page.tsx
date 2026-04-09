@@ -113,7 +113,7 @@ export default function HomePage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <p
-                      className="text-[13px] leading-snug truncate"
+                      className="text-[14px] font-semibold leading-snug truncate"
                       style={{ color: "var(--text-primary)" }}
                     >
                       {idea.summary}
