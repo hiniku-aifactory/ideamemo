@@ -29,10 +29,12 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
 
 export default function GraphPage() {
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [filter, setFilter] = useState<FilterRange>("all");
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   // ミニパネル
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -47,14 +49,30 @@ export default function GraphPage() {
   } | null>(null);
   const [combineLoading, setCombineLoading] = useState(false);
 
-  // 長押しドラッグ
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const [dragMode, setDragMode] = useState(false);
-  const [dragFrom, setDragFrom] = useState<GraphNode | null>(null);
+  // refでクリックハンドラ用の最新stateを保持
+  const selectedNodeRef = useRef<GraphNode | null>(null);
+  const combineNodeARef = useRef<GraphNode | null>(null);
+  selectedNodeRef.current = selectedNode;
+  combineNodeARef.current = combineNodeA;
 
   useEffect(() => {
     setIdeas(mockDb.ideas.list());
     setConnections(mockDb.connections.list());
+  }, []);
+
+  // コンテナサイズ検知
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setDimensions({ width, height });
+        }
+      }
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
   }, []);
 
   const filteredIdeas = ideas.filter((idea) => {
@@ -71,20 +89,21 @@ export default function GraphPage() {
 
   const linkCount = filteredConnections.filter((c) => c.idea_to_id).length;
 
-  // ノードタップ
+  // ノードタップ — refから最新値を読む
   const handleNodeClick = useCallback((d: GraphNode) => {
     if (d.isKnowledge) {
       setSelectedNode(d);
       return;
     }
 
-    if (combineNodeA && combineNodeA.id !== d.id) {
+    const currentCombineA = combineNodeARef.current;
+    if (currentCombineA && currentCombineA.id !== d.id) {
       handleCombine(d);
       return;
     }
 
-    if (selectedNode?.id === d.id) {
-      // 同一ノード2回タップ → メモ詳細
+    const currentSelected = selectedNodeRef.current;
+    if (currentSelected?.id === d.id) {
       router.push(`/memo/${d.id}`);
       return;
     }
@@ -93,11 +112,13 @@ export default function GraphPage() {
     setCombineResult(null);
     setExpandedNodeId(null);
     setSelectedNode(d);
-  }, [selectedNode, combineNodeA, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   // 掛け合わせ
   const handleCombine = useCallback(async (nodeB: GraphNode) => {
-    if (!combineNodeA || combineNodeA.id === nodeB.id) return;
+    const currentCombineA = combineNodeARef.current;
+    if (!currentCombineA || currentCombineA.id === nodeB.id) return;
     setCombineLoading(true);
     setSelectedNode(null);
 
@@ -105,7 +126,7 @@ export default function GraphPage() {
       const res = await fetch("/api/combine", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ideaAId: combineNodeA.id, ideaBId: nodeB.id }),
+        body: JSON.stringify({ ideaAId: currentCombineA.id, ideaBId: nodeB.id }),
       });
       const data = await res.json();
       setCombineResult(data);
@@ -116,7 +137,7 @@ export default function GraphPage() {
       setCombineLoading(false);
       setCombineNodeA(null);
     }
-  }, [combineNodeA]);
+  }, []);
 
   // 外部知識展開
   const handleExpand = useCallback(() => {
@@ -135,15 +156,18 @@ export default function GraphPage() {
     setSelectedNode(null);
   }, [selectedNode]);
 
-  // D3 グラフ描画
+  // D3 グラフ描画 — dimensionsが確定してから
   useEffect(() => {
     if (!svgRef.current || filteredIdeas.length === 0) return;
+    const { width, height } = dimensions;
+    if (width === 0 || height === 0) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = svgRef.current.clientWidth;
-    const height = svgRef.current.clientHeight;
+    // SVGにwidht/heightを明示
+    svg.attr("width", width).attr("height", height);
+
     const g = svg.append("g");
 
     const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
@@ -151,13 +175,16 @@ export default function GraphPage() {
       .on("zoom", (event) => g.attr("transform", event.transform));
     svg.call(zoomBehavior);
 
+    // ノード半径: 画面サイズに応じて調整
+    const baseR = Math.max(22, Math.min(width, height) * 0.04);
+
     // ノードデータ
     const nodes: GraphNode[] = filteredIdeas.map((idea) => ({
       id: idea.id,
       summary: idea.summary,
       keywords: idea.keywords,
       created_at: idea.created_at,
-      r: 18,
+      r: baseR,
     }));
 
     // 展開された外部知識ノードを追加
@@ -171,7 +198,7 @@ export default function GraphPage() {
           summary: c.external_knowledge_title ?? "",
           keywords: [],
           created_at: c.created_at,
-          r: 12,
+          r: baseR * 0.6,
           isKnowledge: true,
           knowledgeTitle: c.external_knowledge_title ?? "",
           knowledgeDescription: c.external_knowledge_summary ?? "",
@@ -214,10 +241,12 @@ export default function GraphPage() {
 
     // Force simulation
     const simulation = d3.forceSimulation(nodes)
-      .force("charge", d3.forceManyBody().strength(-80))
+      .force("charge", d3.forceManyBody().strength(-200))
       .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collision", d3.forceCollide().radius((d) => (d as GraphNode).r + 8))
-      .force("link", d3.forceLink<GraphNode, GraphLink>(links).id((d) => d.id).distance(80));
+      .force("collision", d3.forceCollide().radius((d) => (d as GraphNode).r + 12))
+      .force("link", d3.forceLink<GraphNode, GraphLink>(links).id((d) => d.id).distance(baseR * 5))
+      .force("x", d3.forceX(width / 2).strength(0.05))
+      .force("y", d3.forceY(height / 2).strength(0.05));
 
     // エッジ
     g.selectAll<SVGLineElement, GraphLink>("line")
@@ -242,45 +271,28 @@ export default function GraphPage() {
       .attr("fill", "#FFFFFF")
       .attr("stroke", (d) => {
         if (d.isKnowledge) return "#CCCCCC";
-        if (selectedNode?.id === d.id || combineNodeA?.id === d.id) return "#222222";
         return "#DDDDDD";
       })
-      .attr("stroke-width", (d) => {
-        if (selectedNode?.id === d.id || combineNodeA?.id === d.id) return 1.5;
-        return 0.5;
-      })
+      .attr("stroke-width", (d) => d.isKnowledge ? 0.5 : 0.5)
       .attr("stroke-dasharray", (d) => d.isKnowledge ? "3 2" : "none");
 
     // ノードラベル
     nodeGroup.append("text")
       .attr("text-anchor", "middle")
       .attr("dy", "0.35em")
-      .attr("font-size", (d) => d.isKnowledge ? "7px" : "9px")
+      .attr("font-size", (d) => d.isKnowledge ? "8px" : "10px")
       .attr("fill", "#888888")
+      .attr("pointer-events", "none")
       .text((d) => {
         const label = d.isKnowledge ? (d.knowledgeTitle ?? "") : d.summary;
-        return label.slice(0, 4);
+        return label.length > 6 ? label.slice(0, 5) + "…" : label;
       });
 
     // クリック
-    nodeGroup.on("click", (_event, d) => handleNodeClick(d));
-
-    // 非関連ノードのフェード
-    if (selectedNode && !selectedNode.isKnowledge) {
-      const connectedIds = new Set<string>();
-      connectedIds.add(selectedNode.id);
-      connections.forEach((c) => {
-        if (c.idea_from_id === selectedNode.id && c.idea_to_id) connectedIds.add(c.idea_to_id);
-        if (c.idea_to_id === selectedNode.id) connectedIds.add(c.idea_from_id);
-      });
-      // 外部知識ノードも関連扱い
-      if (expandedNodeId === selectedNode.id) {
-        nodes.forEach((n) => {
-          if (n.parentIdeaId === selectedNode.id) connectedIds.add(n.id);
-        });
-      }
-      nodeGroup.attr("opacity", (d) => connectedIds.has(d.id) ? 1 : 0.3);
-    }
+    nodeGroup.on("click", (_event, d) => {
+      _event.stopPropagation();
+      handleNodeClick(d);
+    });
 
     // tick
     const linkElements = g.selectAll<SVGLineElement, GraphLink>("line");
@@ -313,7 +325,14 @@ export default function GraphPage() {
       if (animId) cancelAnimationFrame(animId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredIdeas, filteredConnections, expandedNodeId, selectedNode, combineNodeA]);
+  }, [filteredIdeas, filteredConnections, expandedNodeId, dimensions]);
+
+  // SVG空白クリックで選択解除
+  const handleBackgroundClick = useCallback(() => {
+    setSelectedNode(null);
+    setCombineResult(null);
+    setCombineNodeA(null);
+  }, []);
 
   // エンプティステート
   if (ideas.length === 0) {
@@ -384,24 +403,31 @@ export default function GraphPage() {
         </div>
       )}
 
-      {/* SVG */}
-      <div className="flex-1 relative" onClick={() => { if (!dragMode) { setSelectedNode(null); setCombineResult(null); } }}>
+      {/* SVGコンテナ */}
+      <div
+        ref={containerRef}
+        className="flex-1 relative"
+        onClick={handleBackgroundClick}
+      >
         <svg
           ref={svgRef}
-          className="w-full h-full"
+          className="absolute inset-0 w-full h-full"
           style={{ touchAction: "none" }}
-          onClick={(e) => e.stopPropagation()}
         />
       </div>
 
       {/* ミニパネル: ノード選択時 */}
       {selectedNode && !combineResult && (
         <div
-          className="mx-5 mb-24 rounded-lg p-3 animate-page-enter"
-          style={{ background: "var(--bg-secondary)", border: "0.5px solid var(--border-light)" }}
+          className="absolute left-5 right-5 rounded-lg p-3 animate-page-enter"
+          style={{
+            bottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+            background: "var(--bg-secondary)",
+            border: "0.5px solid var(--border-light)",
+            boxShadow: "0 -2px 8px rgba(0,0,0,0.04)",
+          }}
         >
           {selectedNode.isKnowledge ? (
-            // 外部知識ノード詳細
             <div>
               <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
                 {selectedNode.knowledgeTitle}
@@ -422,7 +448,6 @@ export default function GraphPage() {
               )}
             </div>
           ) : (
-            // メモノード詳細
             <div>
               <p className="text-[13px] truncate" style={{ color: "var(--text-primary)" }}>
                 {selectedNode.summary}
@@ -440,21 +465,21 @@ export default function GraphPage() {
               </div>
               <div className="flex items-center gap-3 mt-2">
                 <button
-                  onClick={() => router.push(`/memo/${selectedNode.id}`)}
+                  onClick={(e) => { e.stopPropagation(); router.push(`/memo/${selectedNode.id}`); }}
                   className="text-[11px]"
                   style={{ color: "var(--accent)" }}
                 >
                   detail →
                 </button>
                 <button
-                  onClick={handleExpand}
+                  onClick={(e) => { e.stopPropagation(); handleExpand(); }}
                   className="text-[11px]"
                   style={{ color: expandedNodeId === selectedNode.id ? "var(--text-primary)" : "var(--text-muted)" }}
                 >
                   {expandedNodeId === selectedNode.id ? "− collapse" : "⊕ expand"}
                 </button>
                 <button
-                  onClick={startCombine}
+                  onClick={(e) => { e.stopPropagation(); startCombine(); }}
                   className="text-[11px]"
                   style={{ color: "var(--text-muted)" }}
                 >
@@ -468,7 +493,10 @@ export default function GraphPage() {
 
       {/* 掛け合わせローディング */}
       {combineLoading && (
-        <div className="mx-5 mb-24 flex items-center justify-center gap-2 py-3">
+        <div
+          className="absolute left-5 right-5 flex items-center justify-center gap-2 py-3"
+          style={{ bottom: "calc(80px + env(safe-area-inset-bottom, 0px))" }}
+        >
           <div
             className="h-3 w-3 rounded-full border border-t-transparent animate-spin"
             style={{ borderColor: "var(--border)", borderTopColor: "transparent" }}
@@ -485,8 +513,13 @@ export default function GraphPage() {
       {/* 掛け合わせ結果ミニパネル */}
       {combineResult && (
         <div
-          className="mx-5 mb-24 rounded-lg p-3 animate-page-enter"
-          style={{ background: "var(--bg-secondary)", border: "0.5px solid var(--border-light)" }}
+          className="absolute left-5 right-5 rounded-lg p-3 animate-page-enter"
+          style={{
+            bottom: "calc(80px + env(safe-area-inset-bottom, 0px))",
+            background: "var(--bg-secondary)",
+            border: "0.5px solid var(--border-light)",
+            boxShadow: "0 -2px 8px rgba(0,0,0,0.04)",
+          }}
         >
           <div className="flex items-center gap-2 text-[11px]" style={{ color: "var(--text-muted)" }}>
             <span style={{ color: "var(--text-primary)" }}>●</span>
@@ -500,9 +533,11 @@ export default function GraphPage() {
           </p>
           <div className="flex items-center gap-3 mt-2">
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
+                const connId = combineResult.connection.id;
                 setCombineResult(null);
-                router.push(`/chat?connection=${combineResult.connection.id}`);
+                router.push(`/chat?connection=${connId}`);
               }}
               className="text-[11px]"
               style={{ color: "var(--accent)" }}
