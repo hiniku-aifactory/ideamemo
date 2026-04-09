@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Mic, Square, Loader2, ArrowLeft } from "lucide-react";
 import { WaveformBars } from "@/components/waveform-bars";
 import { ConnectionCard } from "@/components/connection-card";
+import { LimitModal } from "@/components/limit-modal";
 import { mockDb } from "@/lib/mock/db";
 
 type Phase = "idle" | "recording" | "processing" | "transcription" | "structured" | "connection" | "done" | "error";
@@ -43,6 +44,7 @@ export default function RecordPage() {
   const [connections, setConnections] = useState<ConnectionData[]>([]);
   const [showConnectionCount, setShowConnectionCount] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -342,9 +344,37 @@ export default function RecordPage() {
 
           {/* エラー */}
           {phase === "error" && (
-            <p className="text-sm" style={{ color: "var(--error)" }}>
-              {result.error || "エラーが発生しました"}
-            </p>
+            <div className="text-center space-y-3">
+              <p className="text-sm" style={{ color: "var(--error)" }}>
+                {result.error || "処理中にエラーが発生しました"}
+              </p>
+              {result.error?.includes("上限") ? (
+                <button
+                  onClick={() => setShowLimitModal(true)}
+                  className="px-4 py-2 rounded-lg text-sm"
+                  style={{ background: "var(--accent)", color: "#0A0A0A" }}
+                >
+                  詳細を見る
+                </button>
+              ) : (
+                <div className="flex gap-3 justify-center">
+                  <button
+                    onClick={() => { setPhase("idle"); setResult({}); startRecording(); }}
+                    className="px-4 py-2 rounded-lg text-sm"
+                    style={{ background: "var(--accent)", color: "#0A0A0A" }}
+                  >
+                    もう一度試す
+                  </button>
+                  <button
+                    onClick={() => router.push("/")}
+                    className="px-4 py-2 rounded-lg text-sm"
+                    style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
+                  >
+                    ホームに戻る
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* 完了 */}
@@ -448,6 +478,8 @@ export default function RecordPage() {
       )}
 
       <div className="h-4" />
+
+      <LimitModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
     </main>
   );
 }

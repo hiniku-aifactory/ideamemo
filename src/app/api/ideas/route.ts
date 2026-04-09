@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { transcribe, structure, discoverConnectionSingle } from "@/lib/ai";
 import { mockDb } from "@/lib/mock/db";
 import { MOCK_MODE } from "@/lib/mock/data";
+import { maybeUpdateProfile } from "@/lib/ai/profile";
 import type { Idea, Connection } from "@/lib/types";
 import type { PersonaId } from "@/lib/personas";
 
 const CONNECTION_COUNT = 3;
+const MEMO_LIMIT = 20;
 
 // POST -- Record -> Transcribe -> Structure -> Connect x3 (SSE)
 export async function POST(request: NextRequest) {
@@ -20,6 +22,22 @@ export async function POST(request: NextRequest) {
       };
 
       try {
+        // 0. メモ上限チェック
+        const userId = MOCK_MODE ? "mock-user-001" : "TODO";
+        const currentCount = MOCK_MODE
+          ? mockDb.ideas.listByUser(userId).length
+          : 0;
+
+        if (currentCount >= MEMO_LIMIT) {
+          send("error", {
+            code: "MEMO_LIMIT_REACHED",
+            message: "メモの上限（20件）に達しました",
+            retry: false,
+          });
+          controller.close();
+          return;
+        }
+
         // 1. 音声取得
         const formData = await request.formData();
         const audio = formData.get("audio") as File | null;
@@ -126,6 +144,9 @@ export async function POST(request: NextRequest) {
             source_type: connResult.source_type,
           });
         }
+
+        // プロファイル自動更新チェック（非同期、レスポンスをブロックしない）
+        maybeUpdateProfile(userId).catch(console.error);
 
         send("done", { idea_id: ideaId, folder: idea.folder_name });
       } catch (error) {

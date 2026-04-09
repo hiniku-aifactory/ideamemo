@@ -5,7 +5,7 @@ import { MemoCard } from "@/components/memo-card";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CircleUser, Settings, Search } from "lucide-react";
+import { CircleUser, Settings, Search, Mic } from "lucide-react";
 import type { Idea } from "@/lib/types";
 
 const MEMO_LIMIT = 20;
@@ -115,12 +115,18 @@ export default function HomePage() {
             />
           </div>
         ) : ideas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center pt-32">
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              まだメモがありません
+          <div className="flex flex-col items-center" style={{ paddingTop: "25vh" }}>
+            <Mic size={48} style={{ color: "var(--accent)", opacity: 0.5 }} />
+            <p className="mt-4 text-sm" style={{ color: "var(--text-secondary)" }}>
+              最初の気づきを録ろう
             </p>
-            <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
-              下の録音ボタンをタップして、最初のアイデアを録音しましょう
+            <p className="mt-2 text-xs text-center" style={{ color: "var(--text-muted)" }}>
+              ふと思ったこと、15秒でOK
+              <br />
+              AIが世界の知識と繋げます
+            </p>
+            <p className="mt-6 text-sm animate-bounce" style={{ color: "var(--text-muted)" }}>
+              ↓ 録音ボタンをタップ
             </p>
           </div>
         ) : (
