@@ -270,10 +270,10 @@ export default function GraphPage() {
       .attr("r", (d) => d.r)
       .attr("fill", "#FFFFFF")
       .attr("stroke", (d) => {
-        if (d.isKnowledge) return "#CCCCCC";
-        return "#DDDDDD";
+        if (d.isKnowledge) return "#BBBBBB";
+        return "#CCCCCC";
       })
-      .attr("stroke-width", (d) => d.isKnowledge ? 0.5 : 0.5)
+      .attr("stroke-width", 1)
       .attr("stroke-dasharray", (d) => d.isKnowledge ? "3 2" : "none");
 
     // ノードラベル
@@ -337,9 +337,9 @@ export default function GraphPage() {
   // エンプティステート
   if (ideas.length === 0) {
     return (
-      <main className="flex flex-col min-h-dvh animate-page-enter">
+      <main className="flex flex-col h-dvh overflow-hidden animate-page-enter">
         <header
-          className="flex items-center justify-between px-5 pb-3"
+          className="flex-none flex items-center justify-between px-5 pb-3"
           style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
         >
           <span className="text-[11px]" style={{ color: "var(--text-muted)", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
@@ -364,10 +364,10 @@ export default function GraphPage() {
   }
 
   return (
-    <main className="flex flex-col min-h-dvh animate-page-enter">
+    <main className="flex flex-col h-dvh overflow-hidden animate-page-enter">
       {/* Header */}
       <header
-        className="flex items-center justify-between px-5 pb-2"
+        className="flex-none flex items-center justify-between px-5 pb-2"
         style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
       >
         <div className="flex gap-3">
@@ -403,10 +403,11 @@ export default function GraphPage() {
         </div>
       )}
 
-      {/* SVGコンテナ */}
+      {/* SVGコンテナ — TabBar分(64px + safe-area)を下部に確保 */}
       <div
         ref={containerRef}
-        className="flex-1 relative"
+        className="flex-1 relative min-h-0"
+        style={{ paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }}
         onClick={handleBackgroundClick}
       >
         <svg
