@@ -35,7 +35,8 @@ export default function GraphPage() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [filter, setFilter] = useState<FilterRange>("all");
-  const [mounted, setMounted] = useState(false);
+  // ResizeObserverがコンテナのサイズを確定してから格納
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   // ミニパネル
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -50,7 +51,7 @@ export default function GraphPage() {
   } | null>(null);
   const [combineLoading, setCombineLoading] = useState(false);
 
-  // refでクリックハンドラ用の最新stateを保持
+  // refでクリックハンドラ用の最新stateを保持（stale closure回避）
   const selectedNodeRef = useRef<GraphNode | null>(null);
   const combineNodeARef = useRef<GraphNode | null>(null);
   selectedNodeRef.current = selectedNode;
@@ -59,7 +60,22 @@ export default function GraphPage() {
   useEffect(() => {
     setIdeas(mockDb.ideas.list());
     setConnections(mockDb.connections.list());
-    setMounted(true);
+  }, []);
+
+  // ResizeObserverでコンテナの実サイズを監視
+  // コールバックはブラウザがレイアウトを確定した後に発火するため、タイミング問題が発生しない
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setDimensions({ width, height });
+        }
+      }
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
   }, []);
 
   const filteredIdeas = ideas.filter((idea) => {
@@ -144,18 +160,14 @@ export default function GraphPage() {
   }, [selectedNode]);
 
   // D3 グラフ描画
+  // dimensions が 0 より大きくなって初めて実行される（ResizeObserver確定後）
   useEffect(() => {
-    if (!svgRef.current || !containerRef.current || !mounted || filteredIdeas.length === 0) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    if (width === 0 || height === 0) return;
+    const { width, height } = dimensions;
+    if (!svgRef.current || width === 0 || height === 0 || filteredIdeas.length === 0) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
-
-    svg.attr("width", width).attr("height", height)
-       .attr("viewBox", `0 0 ${width} ${height}`);
+    svg.attr("width", width).attr("height", height);
 
     const g = svg.append("g");
 
@@ -258,10 +270,7 @@ export default function GraphPage() {
     nodeGroup.append("circle")
       .attr("r", (d) => d.r)
       .attr("fill", "#FFFFFF")
-      .attr("stroke", (d) => {
-        if (d.isKnowledge) return "#BBBBBB";
-        return "#CCCCCC";
-      })
+      .attr("stroke", (d) => d.isKnowledge ? "#BBBBBB" : "#CCCCCC")
       .attr("stroke-width", 1)
       .attr("stroke-dasharray", (d) => d.isKnowledge ? "3 2" : "none");
 
@@ -295,7 +304,7 @@ export default function GraphPage() {
       nodeGroup.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
 
-    // 微動アニメーション
+    // 微動アニメーション（simulation収束後）
     let animId: number;
     function animate() {
       const t = Date.now() / 1000;
@@ -314,7 +323,7 @@ export default function GraphPage() {
       if (animId) cancelAnimationFrame(animId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredIdeas, filteredConnections, expandedNodeId, mounted]);
+  }, [filteredIdeas, filteredConnections, expandedNodeId, dimensions]);
 
   // SVG空白クリックで選択解除
   const handleBackgroundClick = useCallback(() => {
@@ -384,17 +393,16 @@ export default function GraphPage() {
         </div>
       )}
 
-      {/* SVGコンテナ — TabBar分(64px + safe-area)を下部に確保 */}
+      {/* SVGコンテナ: flex-1で残り高さを全て占有。SVGはabsolute inset-0で完全充填 */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0"
-        style={{ paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }}
+        className="flex-1 min-h-0 relative"
         onClick={handleBackgroundClick}
       >
         <svg
           ref={svgRef}
-          className="block"
-          style={{ touchAction: "none", width: "100%", height: "100%" }}
+          className="absolute inset-0"
+          style={{ touchAction: "none" }}
         />
       </div>
 
