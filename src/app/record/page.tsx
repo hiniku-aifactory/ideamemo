@@ -2,9 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, Square, Loader2, ArrowLeft } from "lucide-react";
 import { WaveformBars } from "@/components/waveform-bars";
-import { ConnectionCard } from "@/components/connection-card";
+import { KnowledgeCard, LatentQuestionHeader } from "@/components/knowledge-card";
 import { LimitModal } from "@/components/limit-modal";
 import { mockDb } from "@/lib/mock/db";
 
@@ -12,16 +11,12 @@ type Phase = "idle" | "recording" | "processing" | "transcription" | "structured
 
 interface ConnectionData {
   id?: string;
-  connection_type: string;
-  persona_label?: string | null;
-  reason: string;
-  action_suggestion: string;
-  quality_score: number;
-  external_knowledge_title: string | null;
-  external_knowledge_url?: string | null;
-  external_knowledge_summary?: string | null;
-  source_idea_summary?: string | null;
-  source_type?: string | null;
+  title: string;
+  description: string;
+  source_url?: string | null;
+  source_title?: string | null;
+  quality_score?: number;
+  bookmarked?: boolean;
 }
 
 interface Result {
@@ -31,9 +26,19 @@ interface Result {
     keywords: string[];
     abstract_principle: string;
     domain: string;
+    latent_question?: string;
   };
   ideaId?: string;
   error?: string;
+}
+
+// ← 戻るアイコン
+function BackArrow() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 export default function RecordPage() {
@@ -56,7 +61,7 @@ export default function RecordPage() {
 
   const MAX_DURATION = 60;
 
-  // 自動録音開始（?auto=true）
+  // 自動録音開始
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("auto") === "true") {
@@ -84,8 +89,6 @@ export default function RecordPage() {
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      // AudioContext + AnalyserNode
       const audioCtx = new AudioContext();
       const source = audioCtx.createMediaStreamSource(stream);
       const analyser = audioCtx.createAnalyser();
@@ -139,10 +142,7 @@ export default function RecordPage() {
   const processAudio = useCallback(async () => {
     const blob = new Blob(chunksRef.current, { type: "audio/webm" });
     const file = new File([blob], "recording.webm", { type: blob.type });
-
-    // ペルソナ情報を取得
     const personas = mockDb.userSettings.get("mock-user-001")?.personas ?? ["builder"];
-
     const formData = new FormData();
     formData.append("audio", file);
     formData.append("personas", JSON.stringify(personas));
@@ -151,7 +151,6 @@ export default function RecordPage() {
 
     try {
       const response = await fetch("/api/ideas", { method: "POST", body: formData });
-
       if (!response.body) throw new Error("No response body");
 
       const reader = response.body.getReader();
@@ -207,7 +206,7 @@ export default function RecordPage() {
       }
     } catch (err) {
       console.error("SSE error:", err);
-      setResult((r) => ({ ...r, error: "通信エラーが発生しました" }));
+      setResult((r) => ({ ...r, error: "通信エラー" }));
       setPhase("error");
     }
   }, []);
@@ -222,7 +221,7 @@ export default function RecordPage() {
 
   const handleBack = () => {
     if (phase === "recording") {
-      if (confirm("録音を中止しますか？")) {
+      if (confirm("録音を中止しますか?")) {
         stopRecording();
         router.push("/");
       }
@@ -233,44 +232,33 @@ export default function RecordPage() {
 
   const progress = Math.min(elapsed / MAX_DURATION, 1);
   const dashOffset = 251.2 * (1 - progress);
-
   const isProcessing = ["processing", "transcription", "structured", "connection", "done"].includes(phase);
 
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
-      {/* Header */}
+      {/* Header: ← のみ */}
       <header
-        className="flex items-center gap-3 px-6 pb-4"
+        className="flex items-center px-5 pb-3"
         style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
       >
         <button
           onClick={handleBack}
-          className="flex items-center justify-center"
           style={{ color: "var(--text-secondary)" }}
         >
-          <ArrowLeft size={20} />
+          <BackArrow />
         </button>
-        <h1
-          className="text-lg font-light"
-          style={{
-            fontFamily: "var(--font-noto-serif-jp), 'Noto Serif JP', serif",
-            color: "var(--text-primary)",
-          }}
-        >
-          新しいメモ
-        </h1>
       </header>
 
-      {/* Results area */}
+      {/* 処理結果エリア */}
       {isProcessing && (
-        <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-6">
-          {/* 文字起こし */}
+        <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-5">
+          {/* 文字起こし: ラベルなし、テキストのみ */}
           {result.transcript && (
             <section className="animate-page-enter">
-              <p className="text-[11px] mb-2" style={{ color: "var(--text-muted)" }}>
-                聞き取れた内容
-              </p>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)", lineHeight: 1.7 }}>
+              <p
+                className="text-[13px] leading-relaxed"
+                style={{ color: "var(--text-primary)", lineHeight: 1.8 }}
+              >
                 {result.transcript}
               </p>
             </section>
@@ -280,7 +268,7 @@ export default function RecordPage() {
           {result.structured && (
             <section className="animate-page-enter">
               <p
-                className="text-base font-medium"
+                className="text-[15px] font-medium"
                 style={{ color: "var(--text-primary)" }}
               >
                 {result.structured.summary}
@@ -289,55 +277,69 @@ export default function RecordPage() {
                 {result.structured.keywords.map((kw) => (
                   <span
                     key={kw}
-                    className="text-[11px] px-2 py-0.5 rounded-full"
-                    style={{ background: "var(--accent)", color: "#0A0A0A" }}
+                    className="text-[10px] px-2 py-0.5 rounded"
+                    style={{
+                      border: "0.5px solid var(--border)",
+                      color: "var(--text-muted)",
+                    }}
                   >
                     {kw}
                   </span>
                 ))}
               </div>
-              <p
-                className="mt-2 text-sm italic"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {result.structured.abstract_principle}
-              </p>
+              {result.structured.abstract_principle && (
+                <p
+                  className="mt-2 text-[13px] italic"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {result.structured.abstract_principle}
+                </p>
+              )}
             </section>
           )}
 
-          {/* 接続カード（複数） */}
-          {connections.slice(0, showConnectionCount).map((conn, i) => (
-            <section key={i} className="animate-page-enter">
-              <ConnectionCard
-                personaLabel={conn.persona_label}
-                connectionType={conn.connection_type}
-                reason={conn.reason}
-                actionSuggestion={conn.action_suggestion}
-                sourceIdeaSummary={conn.source_idea_summary}
-                externalTitle={conn.external_knowledge_title}
-                externalUrl={conn.external_knowledge_url}
-                externalSummary={conn.external_knowledge_summary}
-                sourceType={conn.source_type}
-                animate={i === 0}
-                connectionId={conn.id}
-                onDeepDive={() => router.push(`/chat?connection=${conn.id}`)}
-              />
+          {/* latent_question + 外部知識カード */}
+          {showConnectionCount > 0 && (
+            <section className="animate-page-enter">
+              {result.structured?.latent_question && (
+                <LatentQuestionHeader question={result.structured.latent_question} />
+              )}
+              {connections.slice(0, showConnectionCount).map((conn, i) => (
+                <KnowledgeCard
+                  key={i}
+                  title={conn.title}
+                  description={conn.description}
+                  sourceUrl={conn.source_url}
+                  sourceTitle={conn.source_title}
+                  bookmarked={conn.bookmarked ?? false}
+                  onBookmark={() => {
+                    if (conn.id) {
+                      fetch(`/api/connections/${conn.id}/bookmark`, { method: "POST" });
+                    }
+                  }}
+                />
+              ))}
             </section>
-          ))}
+          )}
 
           {/* 処理中インジケーター */}
           {phase !== "done" && phase !== "error" && (
             <div className="flex items-center gap-2">
-              <Loader2
-                size={14}
-                className="animate-spin"
-                style={{ color: "var(--accent-dim)" }}
+              <div
+                className="h-3 w-3 rounded-full border border-t-transparent animate-spin"
+                style={{ borderColor: "var(--border)", borderTopColor: "transparent" }}
               />
-              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-                {phase === "processing" && "文字起こし中..."}
-                {phase === "transcription" && "構造化中..."}
-                {phase === "structured" && "繋がりを探索中..."}
-                {phase === "connection" && "繋がりを探索中..."}
+              <span
+                className="text-[11px]"
+                style={{
+                  color: "var(--text-muted)",
+                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                }}
+              >
+                {phase === "processing" && "transcribing"}
+                {phase === "transcription" && "structuring"}
+                {phase === "structured" && "searching"}
+                {phase === "connection" && "searching"}
               </span>
             </div>
           )}
@@ -345,47 +347,42 @@ export default function RecordPage() {
           {/* エラー */}
           {phase === "error" && (
             <div className="text-center space-y-3">
-              <p className="text-sm" style={{ color: "var(--error)" }}>
-                {result.error || "処理中にエラーが発生しました"}
+              <p className="text-[13px]" style={{ color: "var(--error)" }}>
+                {result.error || "通信エラー"}
               </p>
               {result.error?.includes("上限") ? (
                 <button
                   onClick={() => setShowLimitModal(true)}
-                  className="px-4 py-2 rounded-lg text-sm"
-                  style={{ background: "var(--accent)", color: "#0A0A0A" }}
+                  className="px-4 py-2 rounded-lg text-[13px]"
+                  style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
                 >
-                  詳細を見る
+                  詳細
                 </button>
               ) : (
-                <div className="flex gap-3 justify-center">
-                  <button
-                    onClick={() => { setPhase("idle"); setResult({}); startRecording(); }}
-                    className="px-4 py-2 rounded-lg text-sm"
-                    style={{ background: "var(--accent)", color: "#0A0A0A" }}
-                  >
-                    もう一度試す
-                  </button>
-                  <button
-                    onClick={() => router.push("/")}
-                    className="px-4 py-2 rounded-lg text-sm"
-                    style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
-                  >
-                    ホームに戻る
-                  </button>
-                </div>
+                <button
+                  onClick={() => { setPhase("idle"); setResult({}); startRecording(); }}
+                  className="px-4 py-2 rounded-lg text-[13px]"
+                  style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
+                >
+                  再試行
+                </button>
               )}
             </div>
           )}
 
-          {/* 完了 */}
+          {/* 完了: ← で戻る（ボタン不要、ヘッダーの戻るで対応） */}
           {phase === "done" && (
-            <button
-              onClick={() => router.push("/")}
-              className="w-full rounded-xl py-3 text-sm font-medium"
-              style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
-            >
-              ホームに戻る
-            </button>
+            <div className="text-center pt-2">
+              <span
+                className="text-[10px]"
+                style={{
+                  color: "var(--text-hint)",
+                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                }}
+              >
+                done
+              </span>
+            </div>
           )}
         </div>
       )}
@@ -393,32 +390,22 @@ export default function RecordPage() {
       {/* 録音エリア */}
       {!isProcessing && (
         <div className="flex-1 flex flex-col items-center justify-center gap-6">
-          {/* マイクエラーメッセージ */}
           {micError && (
-            <p className="text-sm px-6 text-center" style={{ color: "var(--error)" }}>
+            <p className="text-[13px] px-6 text-center" style={{ color: "var(--error)" }}>
               {micError}
             </p>
           )}
 
-          {/* リング + ボタン */}
+          {/* 録音ボタン: 円の中に塗り円 */}
           <div className="relative">
             <svg width="96" height="96" className="absolute -top-4 -left-4">
-              <circle
-                cx="48"
-                cy="48"
-                r="40"
-                fill="none"
-                stroke="var(--border)"
-                strokeWidth="2"
-              />
+              <circle cx="48" cy="48" r="40" fill="none" stroke="var(--border)" strokeWidth="1" />
               {phase === "recording" && (
                 <circle
-                  cx="48"
-                  cy="48"
-                  r="40"
+                  cx="48" cy="48" r="40"
                   fill="none"
-                  stroke="var(--accent)"
-                  strokeWidth="2.5"
+                  stroke="#222222"
+                  strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeDasharray="251.2"
                   strokeDashoffset={dashOffset}
@@ -431,21 +418,22 @@ export default function RecordPage() {
             {phase === "recording" && (
               <div
                 className="absolute inset-0 rounded-full animate-pulse-ring"
-                style={{ background: "var(--accent)", opacity: 0.3 }}
+                style={{ background: "var(--border)", opacity: 0.3 }}
               />
             )}
 
             <button
               onClick={handleTap}
-              className="relative w-16 h-16 rounded-full flex items-center justify-center transition-colors z-10"
+              className="relative w-16 h-16 rounded-full flex items-center justify-center z-10"
               style={{
-                background: phase === "recording" ? "var(--accent)" : "var(--accent-dim)",
+                border: "1px solid #222222",
+                background: "var(--bg-secondary)",
               }}
             >
               {phase === "recording" ? (
-                <Square size={20} style={{ color: "var(--text-primary)" }} />
+                <div style={{ width: 16, height: 16, borderRadius: 2, background: "#222222" }} />
               ) : (
-                <Mic size={24} style={{ color: "var(--text-primary)" }} />
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: "#222222" }} />
               )}
             </button>
           </div>
@@ -456,29 +444,20 @@ export default function RecordPage() {
           {/* タイマー */}
           <div className="text-center">
             <p
-              className="text-sm tabular-nums"
+              className="text-[13px] tabular-nums"
               style={{
-                fontFamily: "var(--font-jetbrains-mono), 'JetBrains Mono', monospace",
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
                 color: "var(--text-muted)",
               }}
             >
               {String(Math.floor(elapsed / 60)).padStart(1, "0")}:
               {String(elapsed % 60).padStart(2, "0")}
             </p>
-            {phase === "recording" && (
-              <p
-                className="text-[11px] mt-1"
-                style={{ color: "var(--text-muted)" }}
-              >
-                残り {MAX_DURATION - elapsed}秒
-              </p>
-            )}
           </div>
         </div>
       )}
 
       <div className="h-4" />
-
       <LimitModal open={showLimitModal} onClose={() => setShowLimitModal(false)} />
     </main>
   );
