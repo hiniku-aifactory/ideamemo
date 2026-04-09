@@ -34,7 +34,7 @@ export default function GraphPage() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [filter, setFilter] = useState<FilterRange>("all");
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const [mounted, setMounted] = useState(false);
 
   // ミニパネル
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -58,21 +58,7 @@ export default function GraphPage() {
   useEffect(() => {
     setIdeas(mockDb.ideas.list());
     setConnections(mockDb.connections.list());
-  }, []);
-
-  // コンテナサイズ検知
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
-          setDimensions({ width, height });
-        }
-      }
-    });
-    ro.observe(containerRef.current);
-    return () => ro.disconnect();
+    setMounted(true);
   }, []);
 
   const filteredIdeas = ideas.filter((idea) => {
@@ -156,17 +142,19 @@ export default function GraphPage() {
     setSelectedNode(null);
   }, [selectedNode]);
 
-  // D3 グラフ描画 — dimensionsが確定してから
+  // D3 グラフ描画
   useEffect(() => {
-    if (!svgRef.current || filteredIdeas.length === 0) return;
-    const { width, height } = dimensions;
+    if (!svgRef.current || !containerRef.current || !mounted || filteredIdeas.length === 0) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
     if (width === 0 || height === 0) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    // SVGにwidht/heightを明示
-    svg.attr("width", width).attr("height", height);
+    svg.attr("width", width).attr("height", height)
+       .attr("viewBox", `0 0 ${width} ${height}`);
 
     const g = svg.append("g");
 
@@ -325,7 +313,7 @@ export default function GraphPage() {
       if (animId) cancelAnimationFrame(animId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredIdeas, filteredConnections, expandedNodeId, dimensions]);
+  }, [filteredIdeas, filteredConnections, expandedNodeId, mounted]);
 
   // SVG空白クリックで選択解除
   const handleBackgroundClick = useCallback(() => {
@@ -406,14 +394,14 @@ export default function GraphPage() {
       {/* SVGコンテナ — TabBar分(64px + safe-area)を下部に確保 */}
       <div
         ref={containerRef}
-        className="flex-1 relative min-h-0"
+        className="flex-1 min-h-0"
         style={{ paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))" }}
         onClick={handleBackgroundClick}
       >
         <svg
           ref={svgRef}
-          className="absolute inset-0 w-full h-full"
-          style={{ touchAction: "none" }}
+          className="block"
+          style={{ touchAction: "none", width: "100%", height: "100%" }}
         />
       </div>
 
