@@ -22,6 +22,7 @@ export interface Structured {
   summary: string;
   keywords: string[];
   abstract_principle: string;
+  latent_question: string;
   domain: string;
 }
 
@@ -38,6 +39,10 @@ export interface ConnectionResult {
   connection_type: string;
   source_type: string;
   persona_label: string;
+  title: string;
+  description: string;
+  source_url: string | null;
+  source_title: string | null;
   reason: string;
   action_suggestion: string;
   quality_score: number;
@@ -61,6 +66,10 @@ export async function discoverConnectionSingle(
       ...mock,
       connection_type: "external_knowledge",
       persona_label: PERSONA_LABELS[index] ?? "作っている人の視点",
+      title: mock.external_knowledge_title ?? "",
+      description: mock.external_knowledge_summary ?? "",
+      source_url: mock.external_knowledge_url ?? null,
+      source_title: mock.external_knowledge_title ?? null,
     };
   }
   // リアルモードは pipeline.ts の generateConnection を使用

@@ -11,6 +11,7 @@ export interface Idea {
   summary: string;
   keywords: string[];
   abstract_principle: string;
+  latent_question: string;
   domain: Domain;
   audio_url: string | null;
   folder_id: string | null;
@@ -35,6 +36,7 @@ export interface Connection {
   user_note: string | null;
   feedback: "positive" | "negative" | null;
   feedback_at: string | null;
+  bookmarked: boolean;
   created_at: string;
 }
 

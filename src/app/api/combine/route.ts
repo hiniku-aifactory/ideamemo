@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
       user_note: null,
       feedback: null,
       feedback_at: null,
+      bookmarked: false,
       created_at: new Date().toISOString(),
     };
 

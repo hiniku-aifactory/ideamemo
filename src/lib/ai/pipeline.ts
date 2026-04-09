@@ -63,16 +63,18 @@ The query should find specific examples, case studies, or research — not gener
   const synthesisResponse = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 500,
-    system: `あなたは鋭いリサーチャーです。ユーザーのメモと外部知識を繋げて「確かに！」を作ります。
+    system: `あなたはリサーチャー。ユーザーの気づきに関連する外部知識を見つけて、事実を端的に紐づける。
 
 ${persona.promptInstruction}
 ${profileSection}
 ${fbSection}
 
 # 出力ルール
-- 断定調。「~かもしれません」禁止。「~だ。」で終わる
-- 具体的。社名、人名、数字、年号を必ず含める
-- JSON形式のみ出力。マークダウンや説明文は一切不要`,
+- 見出し: その外部知識を一言で表す名詞句（10-20字）
+- 説明: 事実のみ。2-3文。数字・社名・年号を含める
+- 命令しない。提案しない。事実を述べる
+- 「〜かもしれません」「〜してみてください」禁止
+- JSON形式のみ出力`,
     messages: [
       {
         role: "user",
@@ -85,14 +87,12 @@ ${fbSection}
 # 検索結果
 ${searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.description}\nURL: ${r.url}`).join("\n\n")}
 
-以下のJSON形式で接続を1つ生成:
+以下のJSON形式で知識を1つ紐づけ:
 {
-  "reason": "つながりの理由（2-3文、断定調）",
-  "action_suggestion": "具体的な次のアクション（1文、TRY THIS:は不要）",
-  "external_knowledge_title": "引用元のタイトル",
-  "external_knowledge_url": "URL",
-  "external_knowledge_summary": "外部知識の要約（2-3文）",
-  "source_idea_summary": "元メモの要点（1文）",
+  "title": "見出し（名詞句、10-20字）",
+  "description": "事実の説明（2-3文）",
+  "source_url": "URL",
+  "source_title": "引用元タイトル",
   "quality_score": 0.0-1.0
 }`,
       },
@@ -107,12 +107,16 @@ ${searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.description}\nURL: ${r
     connection_type: "external_knowledge",
     source_type: "external",
     persona_label: persona.label,
-    reason: parsed.reason,
-    action_suggestion: parsed.action_suggestion,
+    title: parsed.title ?? "",
+    description: parsed.description ?? "",
+    source_url: parsed.source_url ?? null,
+    source_title: parsed.source_title ?? null,
+    reason: parsed.description ?? "",
+    action_suggestion: "",
     quality_score: parsed.quality_score ?? 0.7,
-    external_knowledge_title: parsed.external_knowledge_title,
-    external_knowledge_url: parsed.external_knowledge_url,
-    external_knowledge_summary: parsed.external_knowledge_summary,
-    source_idea_summary: parsed.source_idea_summary,
+    external_knowledge_title: parsed.title ?? null,
+    external_knowledge_url: parsed.source_url ?? null,
+    external_knowledge_summary: parsed.description ?? null,
+    source_idea_summary: "",
   };
 }

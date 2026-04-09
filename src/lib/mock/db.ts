@@ -94,6 +94,14 @@ export const mockDb = {
         conn.feedback_at = new Date().toISOString();
       }
     },
+    toggleBookmark(id: string): boolean {
+      const conn = connections.find((c) => c.id === id);
+      if (conn) {
+        conn.bookmarked = !conn.bookmarked;
+        return conn.bookmarked;
+      }
+      return false;
+    },
     deleteByIdea(ideaId: string): void {
       connections = connections.filter(
         (c) => c.idea_from_id !== ideaId && c.idea_to_id !== ideaId

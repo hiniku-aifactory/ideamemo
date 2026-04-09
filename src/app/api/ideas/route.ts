@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
           summary: structured.summary,
           keywords: structured.keywords,
           abstract_principle: structured.abstract_principle,
+          latent_question: structured.latent_question ?? "",
           domain: structured.domain as Idea["domain"],
           audio_url: null,
           folder_id: null,
@@ -123,6 +124,7 @@ export async function POST(request: NextRequest) {
             user_note: null,
             feedback: null,
             feedback_at: null,
+            bookmarked: false,
             created_at: now,
           };
 
@@ -132,16 +134,12 @@ export async function POST(request: NextRequest) {
 
           send("connection", {
             id: conn.id,
-            connection_type: conn.connection_type,
-            persona_label: conn.persona_label,
-            reason: conn.reason,
-            action_suggestion: conn.action_suggestion,
+            title: connResult.title ?? conn.external_knowledge_title ?? "",
+            description: connResult.description ?? conn.external_knowledge_summary ?? "",
+            source_url: connResult.source_url ?? conn.external_knowledge_url ?? null,
+            source_title: connResult.source_title ?? conn.external_knowledge_title ?? null,
             quality_score: conn.quality_score,
-            external_knowledge_title: conn.external_knowledge_title,
-            external_knowledge_url: conn.external_knowledge_url,
-            external_knowledge_summary: conn.external_knowledge_summary,
-            source_idea_summary: conn.source_idea_summary,
-            source_type: connResult.source_type,
+            bookmarked: false,
           });
         }
 
