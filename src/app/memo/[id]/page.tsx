@@ -3,19 +3,11 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AppHeader } from "@/components/app-header";
 import { KnowledgeCard, LatentQuestionHeader } from "@/components/knowledge-card";
 import { mockDb } from "@/lib/mock/db";
 import type { Idea, Connection } from "@/lib/types";
 import type { ChatSession } from "@/lib/mock/db";
-
-// ← 戻るアイコン
-function BackArrow() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 // コピーアイコン
 function CopyIcon() {
@@ -97,18 +89,14 @@ export default function MemoDetailPage({ params }: Props) {
 
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
-      {/* Header */}
-      <header
-        className="flex items-center justify-between px-5 pb-3"
-        style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
-      >
-        <button onClick={() => router.push("/")} style={{ color: "var(--text-secondary)" }}>
-          <BackArrow />
-        </button>
-        <button onClick={handleCopy} style={{ color: "var(--text-secondary)" }}>
-          <CopyIcon />
-        </button>
-      </header>
+      <AppHeader
+        showBack
+        rightContent={
+          <button onClick={handleCopy} style={{ color: "var(--text-secondary)" }}>
+            <CopyIcon />
+          </button>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto px-5 pb-28 space-y-5">
         {/* サマリー */}

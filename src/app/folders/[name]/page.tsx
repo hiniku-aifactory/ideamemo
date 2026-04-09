@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { AppHeader } from "@/components/app-header";
 import { MemoCard } from "@/components/memo-card";
 import { mockDb } from "@/lib/mock/db";
 import type { Idea } from "@/lib/types";
@@ -25,26 +25,7 @@ export default function FolderDetailPage({ params }: Props) {
 
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
-      <header
-        className="flex items-center gap-3 px-6 pb-3"
-        style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
-      >
-        <button
-          onClick={() => router.push("/folders")}
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <h1
-          className="text-lg font-light"
-          style={{
-            fontFamily: "system-ui, -apple-system, sans-serif",
-            color: "var(--text-primary)",
-          }}
-        >
-          {folderName}
-        </h1>
-      </header>
+      <AppHeader showBack title={folderName} />
 
       <div className="flex-1 px-6 pb-28">
         {ideas.length === 0 ? (

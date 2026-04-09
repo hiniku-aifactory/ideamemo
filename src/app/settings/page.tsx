@@ -2,14 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-// BackArrow SVG
-function BackArrow() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
+import { AppHeader } from "@/components/app-header";
 import { MOCK_MODE, MOCK_USER } from "@/lib/mock/data";
 import { mockDb } from "@/lib/mock/db";
 import { PersonaSelector } from "@/components/persona-selector";
@@ -60,24 +53,7 @@ export default function SettingsPage() {
 
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
-      {/* Header */}
-      <header
-        className="flex items-center gap-3 px-6 pb-4"
-        style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
-      >
-        <button
-          onClick={() => router.back()}
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <BackArrow />
-        </button>
-        <h1
-          className="text-lg font-light"
-          style={{ color: "var(--text-primary)" }}
-        >
-          設定
-        </h1>
-      </header>
+      <AppHeader showBack title="Settings" />
 
       <div className="flex-1 px-6 pb-28 space-y-6">
         {/* ペルソナ */}

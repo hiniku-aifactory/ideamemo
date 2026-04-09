@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { AppHeader } from "@/components/app-header";
 import { WaveformBars } from "@/components/waveform-bars";
 import { KnowledgeCard, LatentQuestionHeader } from "@/components/knowledge-card";
 import { LimitModal } from "@/components/limit-modal";
@@ -30,15 +31,6 @@ interface Result {
   };
   ideaId?: string;
   error?: string;
-}
-
-// ← 戻るアイコン
-function BackArrow() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 export default function RecordPage() {
@@ -236,18 +228,7 @@ export default function RecordPage() {
 
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
-      {/* Header: ← のみ */}
-      <header
-        className="flex items-center px-5 pb-3"
-        style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
-      >
-        <button
-          onClick={handleBack}
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <BackArrow />
-        </button>
-      </header>
+      <AppHeader showBack />
 
       {/* 処理結果エリア */}
       {isProcessing && (

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Send, ChevronDown, ChevronUp, MessageCircle, Pin } from "lucide-react";
+import { AppHeader } from "@/components/app-header";
 import { mockDb } from "@/lib/mock/db";
 import type { ChatSession, ChatMessage } from "@/lib/mock/db";
 
@@ -17,7 +17,10 @@ function SessionList({ onSelect }: { onSelect: (id: string) => void }) {
   if (sessions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center" style={{ paddingTop: "30vh" }}>
-        <MessageCircle size={48} style={{ color: "var(--accent)", opacity: 0.5 }} />
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <circle cx="24" cy="22" r="16" stroke="#E0E0E0" strokeWidth="0.5" />
+          <path d="M16 34L24 38L20 34" stroke="#E0E0E0" strokeWidth="0.5" />
+        </svg>
         <p className="mt-4 text-sm" style={{ color: "var(--text-secondary)" }}>
           まだチャット履歴がありません
         </p>
@@ -255,18 +258,23 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
             onClick={() => setContextExpanded(!contextExpanded)}
             className="w-full flex items-center gap-2 p-2.5 text-left"
           >
-            <Pin size={12} style={{ color: "var(--text-muted)" }} />
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <circle cx="6" cy="4" r="3" stroke="var(--text-muted)" strokeWidth="0.7" />
+              <line x1="6" y1="7" x2="6" y2="11" stroke="var(--text-muted)" strokeWidth="0.7" />
+            </svg>
             <span
               className={`flex-1 text-xs ${contextExpanded ? "" : "line-clamp-1"}`}
               style={{ color: "var(--text-secondary)" }}
             >
               {contextSummary}
             </span>
-            {contextExpanded ? (
-              <ChevronUp size={14} style={{ color: "var(--text-muted)" }} />
-            ) : (
-              <ChevronDown size={14} style={{ color: "var(--text-muted)" }} />
-            )}
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              {contextExpanded ? (
+                <path d="M3 9L7 5L11 9" stroke="var(--text-muted)" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round" />
+              ) : (
+                <path d="M3 5L7 9L11 5" stroke="var(--text-muted)" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round" />
+              )}
+            </svg>
           </button>
         </div>
       )}
@@ -338,7 +346,9 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
               opacity: sending ? 0.5 : 1,
             }}
           >
-            <Send size={18} />
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <path d="M3 9L15 3L9 15L8 10L3 9Z" stroke="currentColor" strokeWidth="0.7" strokeLinejoin="round" />
+            </svg>
           </button>
         </div>
       </div>
@@ -357,27 +367,7 @@ function ChatPageInner() {
 
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
-      {/* Header */}
-      <header
-        className="flex items-center gap-3 px-6 pb-3"
-        style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
-      >
-        <button
-          onClick={() => router.back()}
-          style={{ color: "var(--text-secondary)" }}
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <h1
-          className="text-lg font-light"
-          style={{
-            fontFamily: "system-ui, -apple-system, sans-serif",
-            color: "var(--text-primary)",
-          }}
-        >
-          {hasContext ? "深掘り" : "チャット"}
-        </h1>
-      </header>
+      <AppHeader showBack />
 
       {/* Content */}
       <div className="flex-1 flex flex-col min-h-0">

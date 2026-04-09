@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import * as d3 from "d3";
+import { AppHeader } from "@/components/app-header";
 import { mockDb } from "@/lib/mock/db";
 import type { Idea, Connection } from "@/lib/types";
 
@@ -326,14 +327,7 @@ export default function GraphPage() {
   if (ideas.length === 0) {
     return (
       <main className="flex flex-col h-dvh overflow-hidden animate-page-enter">
-        <header
-          className="flex-none flex items-center justify-between px-5 pb-3"
-          style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
-        >
-          <span className="text-[11px]" style={{ color: "var(--text-muted)", fontFamily: "'JetBrains Mono', ui-monospace, monospace" }}>
-            0 nodes
-          </span>
-        </header>
+        <AppHeader />
         <div className="flex-1 flex flex-col items-center justify-center" style={{ paddingBottom: "20vh" }}>
           <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
             <circle cx="40" cy="40" r="38" stroke="#E0E0E0" strokeWidth="0.5" />
@@ -353,11 +347,10 @@ export default function GraphPage() {
 
   return (
     <main className="flex flex-col h-dvh overflow-hidden animate-page-enter">
-      {/* Header */}
-      <header
-        className="flex-none flex items-center justify-between px-5 pb-2"
-        style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
-      >
+      <AppHeader />
+
+      {/* フィルタバー */}
+      <div className="flex-none flex items-center justify-between px-5 pb-2">
         <div className="flex gap-3">
           {(["all", "7d", "30d"] as FilterRange[]).map((f) => (
             <button
@@ -379,7 +372,7 @@ export default function GraphPage() {
         >
           {filteredIdeas.length} nodes · {linkCount} links
         </span>
-      </header>
+      </div>
 
       {/* 掛け合わせモードバナー */}
       {combineNodeA && (

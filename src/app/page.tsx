@@ -3,37 +3,13 @@
 import { useAuth } from "@/components/auth-provider";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { AppHeader } from "@/components/app-header";
 import type { Idea } from "@/lib/types";
 
 const MEMO_LIMIT = 20;
 
 interface IdeaWithMeta extends Idea {
   connection_count?: number;
-}
-
-// 幾何学モチーフ: 同心円 + 十字線
-function GeometricLogo() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-      <circle cx="14" cy="14" r="13" stroke="#E0E0E0" strokeWidth="0.5" />
-      <circle cx="14" cy="14" r="8" stroke="#E0E0E0" strokeWidth="0.5" />
-      <circle cx="14" cy="14" r="3" stroke="#E0E0E0" strokeWidth="0.5" />
-      <line x1="14" y1="0" x2="14" y2="28" stroke="#E0E0E0" strokeWidth="0.5" />
-      <line x1="0" y1="14" x2="28" y2="14" stroke="#E0E0E0" strokeWidth="0.5" />
-    </svg>
-  );
-}
-
-// ハンバーガーメニュー
-function MenuIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <line x1="3" y1="5" x2="17" y2="5" stroke="#BBBBBB" strokeWidth="1" />
-      <line x1="3" y1="10" x2="17" y2="10" stroke="#BBBBBB" strokeWidth="1" />
-      <line x1="3" y1="15" x2="17" y2="15" stroke="#BBBBBB" strokeWidth="1" />
-    </svg>
-  );
 }
 
 function timeAgo(dateStr: string): string {
@@ -53,7 +29,6 @@ export default function HomePage() {
   const router = useRouter();
   const [ideas, setIdeas] = useState<IdeaWithMeta[]>([]);
   const [fetching, setFetching] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const fetchIdeas = useCallback(async () => {
     try {
@@ -90,57 +65,9 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
-      {/* Header */}
-      <header
-        className="flex items-center justify-between px-5 pb-3"
-        style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
-      >
-        <GeometricLogo />
-        <span
-          className="text-xs"
-          style={{
-            color: "var(--text-muted)",
-            fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-          }}
-        >
-          {ideas.length} memos
-        </span>
-        <button onClick={() => setMenuOpen(!menuOpen)} className="relative">
-          <MenuIcon />
-        </button>
-      </header>
-
-      {/* ドロップダウンメニュー */}
-      {menuOpen && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-          <div
-            className="absolute right-5 z-50 rounded-lg py-1 shadow-sm"
-            style={{
-              top: "calc(44px + env(safe-area-inset-top))",
-              background: "var(--bg-secondary)",
-              border: "0.5px solid var(--border-light)",
-            }}
-          >
-            <Link
-              href="/folders"
-              onClick={() => setMenuOpen(false)}
-              className="block px-4 py-2 text-sm"
-              style={{ color: "var(--text-body)" }}
-            >
-              Folders
-            </Link>
-            <Link
-              href="/settings"
-              onClick={() => setMenuOpen(false)}
-              className="block px-4 py-2 text-sm"
-              style={{ color: "var(--text-body)" }}
-            >
-              Settings
-            </Link>
-          </div>
-        </>
-      )}
+      <AppHeader
+        title={`${ideas.length} memos`}
+      />
 
       {/* Content */}
       <div className="flex-1 px-5 pb-28">
