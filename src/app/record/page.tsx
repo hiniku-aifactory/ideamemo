@@ -2,11 +2,23 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, Square, Loader2 } from "lucide-react";
+import { Mic, Square, Loader2, ArrowLeft } from "lucide-react";
 import { WaveformBars } from "@/components/waveform-bars";
 import { ConnectionCard } from "@/components/connection-card";
 
 type Phase = "idle" | "recording" | "processing" | "transcription" | "structured" | "connection" | "done" | "error";
+
+interface ConnectionData {
+  connection_type: string;
+  reason: string;
+  action_suggestion: string;
+  quality_score: number;
+  external_knowledge_title: string | null;
+  external_knowledge_url?: string | null;
+  external_knowledge_summary?: string | null;
+  source_idea_summary?: string | null;
+  source_type?: string | null;
+}
 
 interface Result {
   transcript?: string;
@@ -15,13 +27,6 @@ interface Result {
     keywords: string[];
     abstract_principle: string;
     domain: string;
-  };
-  connection?: {
-    connection_type: string;
-    reason: string;
-    action_suggestion: string;
-    quality_score: number;
-    external_knowledge_title: string | null;
   };
   ideaId?: string;
   error?: string;
@@ -32,16 +37,30 @@ export default function RecordPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<Result>({});
-  const [showConnection, setShowConnection] = useState(false);
+  const [connections, setConnections] = useState<ConnectionData[]>([]);
+  const [showConnectionCount, setShowConnectionCount] = useState(0);
+  const [micError, setMicError] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const [analyserState, setAnalyserState] = useState<AnalyserNode | null>(null);
 
-  const MAX_DURATION = 60; // 1 minute
+  const MAX_DURATION = 60;
 
-  // Timer
+  // 自動録音開始（?auto=true）
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("auto") === "true") {
+      startRecording();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // タイマー
   useEffect(() => {
     if (phase === "recording") {
       startTimeRef.current = Date.now();
@@ -60,6 +79,17 @@ export default function RecordPage() {
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // AudioContext + AnalyserNode
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+      audioContextRef.current = audioCtx;
+      analyserRef.current = analyser;
+      setAnalyserState(analyser);
+
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
         : "audio/mp4";
@@ -72,6 +102,11 @@ export default function RecordPage() {
 
       recorder.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
+        if (audioContextRef.current) {
+          audioContextRef.current.close();
+          audioContextRef.current = null;
+        }
+        setAnalyserState(null);
         processAudio();
       };
 
@@ -80,9 +115,11 @@ export default function RecordPage() {
       setPhase("recording");
       setElapsed(0);
       setResult({});
-      setShowConnection(false);
+      setConnections([]);
+      setShowConnectionCount(0);
+      setMicError(null);
     } catch {
-      alert("マイクへのアクセスを許可してください");
+      setMicError("マイクへのアクセスを許可してください");
     }
   }, []);
 
@@ -100,6 +137,8 @@ export default function RecordPage() {
 
     const formData = new FormData();
     formData.append("audio", file);
+
+    let connectionIndex = 0;
 
     try {
       const response = await fetch("/api/ideas", { method: "POST", body: formData });
@@ -134,17 +173,21 @@ export default function RecordPage() {
             case "structured":
               setResult((r) => ({ ...r, structured: data }));
               setPhase("structured");
-              // 0.8s intentional delay before showing connection (Wow Moment §7-1)
               break;
-            case "connection":
-              setResult((r) => ({ ...r, connection: data }));
+            case "connection": {
+              setConnections((prev) => [...prev, data]);
               setPhase("connection");
-              setTimeout(() => setShowConnection(true), 800);
+              const idx = connectionIndex;
+              const delay = idx === 0 ? 800 : 500;
+              setTimeout(() => {
+                setShowConnectionCount((c) => Math.max(c, idx + 1));
+              }, delay);
+              connectionIndex++;
               break;
+            }
             case "done":
               setResult((r) => ({ ...r, ideaId: data.idea_id }));
               setPhase("done");
-              if (!result.connection) setShowConnection(false);
               break;
             case "error":
               setResult((r) => ({ ...r, error: data.message }));
@@ -158,7 +201,7 @@ export default function RecordPage() {
       setResult((r) => ({ ...r, error: "通信エラーが発生しました" }));
       setPhase("error");
     }
-  }, [result.connection]);
+  }, []);
 
   const handleTap = () => {
     if (phase === "idle" || phase === "done" || phase === "error") {
@@ -168,17 +211,38 @@ export default function RecordPage() {
     }
   };
 
+  const handleBack = () => {
+    if (phase === "recording") {
+      if (confirm("録音を中止しますか？")) {
+        stopRecording();
+        router.push("/");
+      }
+    } else {
+      router.push("/");
+    }
+  };
+
   const progress = Math.min(elapsed / MAX_DURATION, 1);
-  const dashOffset = 251.2 * (1 - progress); // circumference = 2π*40 ≈ 251.2
+  const dashOffset = 251.2 * (1 - progress);
 
   const isProcessing = ["processing", "transcription", "structured", "connection", "done"].includes(phase);
 
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
       {/* Header */}
-      <header className="px-6 pt-12 pb-4">
+      <header
+        className="flex items-center gap-3 px-6 pb-4"
+        style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
+      >
+        <button
+          onClick={handleBack}
+          className="flex items-center justify-center"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          <ArrowLeft size={20} />
+        </button>
         <h1
-          className="text-2xl font-light"
+          className="text-lg font-light"
           style={{
             fontFamily: "var(--font-noto-serif-jp), 'Noto Serif JP', serif",
             color: "var(--text-primary)",
@@ -188,10 +252,10 @@ export default function RecordPage() {
         </h1>
       </header>
 
-      {/* Results area (scrollable) */}
+      {/* Results area */}
       {isProcessing && (
         <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-6">
-          {/* Transcription */}
+          {/* 文字起こし */}
           {result.transcript && (
             <section className="animate-page-enter">
               <p className="text-[11px] mb-2" style={{ color: "var(--text-muted)" }}>
@@ -203,7 +267,7 @@ export default function RecordPage() {
             </section>
           )}
 
-          {/* Structured */}
+          {/* 構造化 */}
           {result.structured && (
             <section className="animate-page-enter">
               <p
@@ -232,20 +296,24 @@ export default function RecordPage() {
             </section>
           )}
 
-          {/* Connection Card */}
-          {result.connection && showConnection && (
-            <section className="animate-page-enter">
+          {/* 接続カード（複数） */}
+          {connections.slice(0, showConnectionCount).map((conn, i) => (
+            <section key={i} className="animate-page-enter">
               <ConnectionCard
-                connectionType={result.connection.connection_type}
-                reason={result.connection.reason}
-                actionSuggestion={result.connection.action_suggestion}
-                externalTitle={result.connection.external_knowledge_title}
-                animate
+                connectionType={conn.connection_type}
+                reason={conn.reason}
+                actionSuggestion={conn.action_suggestion}
+                sourceIdeaSummary={conn.source_idea_summary}
+                externalTitle={conn.external_knowledge_title}
+                externalUrl={conn.external_knowledge_url}
+                externalSummary={conn.external_knowledge_summary}
+                sourceType={conn.source_type}
+                animate={i === 0}
               />
             </section>
-          )}
+          ))}
 
-          {/* Processing indicator */}
+          {/* 処理中インジケーター */}
           {phase !== "done" && phase !== "error" && (
             <div className="flex items-center gap-2">
               <Loader2
@@ -257,19 +325,19 @@ export default function RecordPage() {
                 {phase === "processing" && "文字起こし中..."}
                 {phase === "transcription" && "構造化中..."}
                 {phase === "structured" && "繋がりを探索中..."}
-                {phase === "connection" && "完了..."}
+                {phase === "connection" && "繋がりを探索中..."}
               </span>
             </div>
           )}
 
-          {/* Error */}
+          {/* エラー */}
           {phase === "error" && (
             <p className="text-sm" style={{ color: "var(--error)" }}>
               {result.error || "エラーが発生しました"}
             </p>
           )}
 
-          {/* Done — Go home */}
+          {/* 完了 */}
           {phase === "done" && (
             <button
               onClick={() => router.push("/")}
@@ -282,12 +350,18 @@ export default function RecordPage() {
         </div>
       )}
 
-      {/* Recording area (centered when not processing) */}
+      {/* 録音エリア */}
       {!isProcessing && (
         <div className="flex-1 flex flex-col items-center justify-center gap-6">
-          {/* Ring progress + FAB */}
+          {/* マイクエラーメッセージ */}
+          {micError && (
+            <p className="text-sm px-6 text-center" style={{ color: "var(--error)" }}>
+              {micError}
+            </p>
+          )}
+
+          {/* リング + ボタン */}
           <div className="relative">
-            {/* SVG Ring */}
             <svg width="96" height="96" className="absolute -top-4 -left-4">
               <circle
                 cx="48"
@@ -314,7 +388,6 @@ export default function RecordPage() {
               )}
             </svg>
 
-            {/* Pulse ring */}
             {phase === "recording" && (
               <div
                 className="absolute inset-0 rounded-full animate-pulse-ring"
@@ -322,7 +395,6 @@ export default function RecordPage() {
               />
             )}
 
-            {/* Button */}
             <button
               onClick={handleTap}
               className="relative w-16 h-16 rounded-full flex items-center justify-center transition-colors z-10"
@@ -338,10 +410,10 @@ export default function RecordPage() {
             </button>
           </div>
 
-          {/* Waveform */}
-          <WaveformBars active={phase === "recording"} />
+          {/* 波形 */}
+          <WaveformBars analyser={phase === "recording" ? analyserState : null} />
 
-          {/* Timer */}
+          {/* タイマー */}
           <div className="text-center">
             <p
               className="text-sm tabular-nums"
@@ -356,7 +428,7 @@ export default function RecordPage() {
             {phase === "recording" && (
               <p
                 className="text-[11px] mt-1"
-                style={{ color: "#2A2725" }}
+                style={{ color: "var(--text-muted)" }}
               >
                 残り {MAX_DURATION - elapsed}秒
               </p>
@@ -365,8 +437,7 @@ export default function RecordPage() {
         </div>
       )}
 
-      {/* Spacer for tab bar */}
-      <div className="h-20" />
+      <div className="h-4" />
     </main>
   );
 }

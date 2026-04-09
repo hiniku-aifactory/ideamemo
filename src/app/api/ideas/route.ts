@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { transcribe, structure, discoverConnection } from "@/lib/ai";
+import { transcribe, structure, discoverConnectionSingle } from "@/lib/ai";
 import { mockDb } from "@/lib/mock/db";
 import { MOCK_MODE } from "@/lib/mock/data";
 import type { Idea, Connection } from "@/lib/types";
 
-// POST — Record → Transcribe → Structure → Connect (SSE)
+const CONNECTION_COUNT = 3;
+
+// POST — Record -> Transcribe -> Structure -> Connect x3 (SSE)
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
 
@@ -17,7 +19,7 @@ export async function POST(request: NextRequest) {
       };
 
       try {
-        // 1. Get audio from form data
+        // 1. 音声取得
         const formData = await request.formData();
         const audio = formData.get("audio") as File | null;
 
@@ -27,22 +29,21 @@ export async function POST(request: NextRequest) {
           return;
         }
 
-        // Validate size (10MB)
         if (audio.size > 10 * 1024 * 1024) {
           send("error", { code: "FILE_TOO_LARGE", message: "ファイルサイズが大きすぎます（上限10MB）", retry: false });
           controller.close();
           return;
         }
 
-        // 2. Transcribe
+        // 2. 文字起こし
         const transcript = await transcribe(audio);
         send("transcription", { transcript });
 
-        // 3. Structure
+        // 3. 構造化
         const structured = await structure(transcript);
         send("structured", structured);
 
-        // 4. Save idea
+        // 4. アイデア保存
         const ideaId = crypto.randomUUID();
         const now = new Date().toISOString();
 
@@ -63,11 +64,12 @@ export async function POST(request: NextRequest) {
         if (MOCK_MODE) {
           mockDb.ideas.insert(idea);
         }
-        // TODO: Supabase insert for real mode
 
-        // 5. Discover connection
-        const connResult = await discoverConnection();
-        if (connResult) {
+        // 5. 接続発見（3件を段階的にSSE送信）
+        for (let i = 0; i < CONNECTION_COUNT; i++) {
+          const connResult = await discoverConnectionSingle(i);
+          if (!connResult) continue;
+
           const conn: Connection = {
             id: crypto.randomUUID(),
             idea_from_id: ideaId,
@@ -79,6 +81,8 @@ export async function POST(request: NextRequest) {
             quality_score: connResult.quality_score,
             external_knowledge_title: connResult.external_knowledge_title,
             external_knowledge_url: connResult.external_knowledge_url,
+            external_knowledge_summary: connResult.external_knowledge_summary,
+            source_idea_summary: connResult.source_idea_summary,
             user_note: null,
             created_at: now,
           };
@@ -93,6 +97,10 @@ export async function POST(request: NextRequest) {
             action_suggestion: conn.action_suggestion,
             quality_score: conn.quality_score,
             external_knowledge_title: conn.external_knowledge_title,
+            external_knowledge_url: conn.external_knowledge_url,
+            external_knowledge_summary: conn.external_knowledge_summary,
+            source_idea_summary: conn.source_idea_summary,
+            source_type: connResult.source_type,
           });
         }
 
@@ -119,25 +127,24 @@ export async function POST(request: NextRequest) {
   });
 }
 
-// GET — List ideas
+// GET — アイデア一覧
 export async function GET() {
   if (MOCK_MODE) {
     const ideas = mockDb.ideas.list();
     return NextResponse.json({ ideas, total: ideas.length });
   }
 
-  // TODO: Supabase query for real mode
   return NextResponse.json({ ideas: [], total: 0 });
 }
 
 function autoFolderName(domain: string): string {
   const map: Record<string, string> = {
-    仕事: "💼 仕事",
-    生活: "🌱 生活",
-    趣味: "🎨 趣味",
-    学び: "📚 学び",
-    人間関係: "🤝 人間関係",
-    その他: "📝 その他",
+    仕事: "仕事",
+    生活: "生活",
+    趣味: "趣味",
+    学び: "学び",
+    人間関係: "人間関係",
+    その他: "その他",
   };
-  return map[domain] ?? "📝 その他";
+  return map[domain] ?? "その他";
 }
