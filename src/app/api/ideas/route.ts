@@ -175,7 +175,11 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   if (MOCK_MODE) {
     const ideas = mockDb.ideas.list();
-    return NextResponse.json({ ideas, total: ideas.length });
+    const ideasWithMeta = ideas.map((idea) => ({
+      ...idea,
+      connection_count: mockDb.connections.listByIdea(idea.id).length,
+    }));
+    return NextResponse.json({ ideas: ideasWithMeta, total: ideas.length });
   }
 
   return NextResponse.json({ ideas: [], total: 0 });
