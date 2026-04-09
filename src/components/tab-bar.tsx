@@ -1,7 +1,8 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRecording } from "@/components/recording-context";
 
 // ホーム: 4つの正方形グリッド
 function GridIcon({ active }: { active: boolean }) {
@@ -16,13 +17,28 @@ function GridIcon({ active }: { active: boolean }) {
   );
 }
 
-// 録音: 円の中に塗り円
-function RecordIcon() {
+// 録音ボタン: 56px、録音中は停止アイコンに変化
+function RecordIcon({ recording }: { recording: boolean }) {
   return (
-    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-      <circle cx="20" cy="20" r="19" stroke="#222222" strokeWidth="1" />
-      <circle cx="20" cy="20" r="8" fill="#222222" />
-    </svg>
+    <div className="relative">
+      {/* 録音中パルスリング */}
+      {recording && (
+        <div
+          className="absolute -inset-1 rounded-full animate-pulse"
+          style={{ background: "rgba(34, 34, 34, 0.06)" }}
+        />
+      )}
+      <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+        <circle cx="28" cy="28" r="27" stroke="#222222" strokeWidth="1" />
+        {recording ? (
+          // 録音中: 停止アイコン（角丸四角）
+          <rect x="20" y="20" width="16" height="16" rx="2" fill="#222222" />
+        ) : (
+          // 待機中: 録音アイコン（塗り円）
+          <circle cx="28" cy="28" r="10" fill="#222222" />
+        )}
+      </svg>
+    </div>
   );
 }
 
@@ -44,12 +60,22 @@ const HIDDEN_PATHS = ["/login", "/onboarding"];
 
 export function TabBar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isRecording, requestStop } = useRecording();
 
   if (HIDDEN_PATHS.includes(pathname)) return null;
 
   const isHome = pathname === "/";
   const isRecord = pathname.startsWith("/record");
   const isGraph = pathname === "/graph";
+
+  const handleRecordTap = () => {
+    if (isRecording) {
+      requestStop();
+    } else {
+      router.push("/record?auto=true");
+    }
+  };
 
   return (
     <nav className="bottom-nav">
@@ -58,9 +84,9 @@ export function TabBar() {
           <GridIcon active={isHome} />
         </Link>
 
-        <Link href="/record?auto=true" className="bottom-nav-item">
-          <RecordIcon />
-        </Link>
+        <button onClick={handleRecordTap} className="bottom-nav-item">
+          <RecordIcon recording={isRecording} />
+        </button>
 
         <Link href="/graph" className="bottom-nav-item">
           <GraphIcon active={isGraph || isRecord} />

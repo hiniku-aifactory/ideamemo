@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/components/auth-provider";
+import { RecordingProvider } from "@/components/recording-context";
 import { TabBar } from "@/components/tab-bar";
 import "./globals.css";
 
@@ -41,10 +42,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
-        <AuthProvider>
-          {children}
-          <TabBar />
-        </AuthProvider>
+        <RecordingProvider>
+          <AuthProvider>
+            {children}
+            <TabBar />
+          </AuthProvider>
+        </RecordingProvider>
       </body>
     </html>
   );

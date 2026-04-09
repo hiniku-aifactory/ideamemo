@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
+import { useRecording } from "@/components/recording-context";
 import { WaveformBars } from "@/components/waveform-bars";
 import { KnowledgeCard, LatentQuestionHeader } from "@/components/knowledge-card";
 import { LimitModal } from "@/components/limit-modal";
@@ -35,6 +36,7 @@ interface Result {
 
 export default function RecordPage() {
   const router = useRouter();
+  const { setRecording: setGlobalRecording, setOnStopRequested } = useRecording();
   const [phase, setPhase] = useState<Phase>("idle");
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<Result>({});
@@ -113,6 +115,7 @@ export default function RecordPage() {
       recorder.start();
       mediaRecorderRef.current = recorder;
       setPhase("recording");
+      setGlobalRecording(true);
       setElapsed(0);
       setResult({});
       setConnections([]);
@@ -129,7 +132,19 @@ export default function RecordPage() {
     }
     if (timerRef.current) clearInterval(timerRef.current);
     setPhase("processing");
-  }, []);
+    setGlobalRecording(false);
+    setOnStopRequested(null);
+  }, [setGlobalRecording, setOnStopRequested]);
+
+  // 録音中はタブバーの停止ボタンと連携
+  const stopRecordingRef = useRef(stopRecording);
+  stopRecordingRef.current = stopRecording;
+  useEffect(() => {
+    if (phase === "recording") {
+      setOnStopRequested(() => () => stopRecordingRef.current());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   const processAudio = useCallback(async () => {
     const blob = new Blob(chunksRef.current, { type: "audio/webm" });
