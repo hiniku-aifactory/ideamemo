@@ -31,17 +31,27 @@
 `NEXT_PUBLIC_MOCK_MODE=true` で全外部APIをモックに切替。
 モックデータは `src/lib/mock/` 配下。API繋ぎ込み時はフラグをfalseにするだけ。
 
-## ビルド順序
+## ビルド順序（v2）
 
-F2(認証) → F1(録音→繋がり) → F3(通知) → F4(グラフ) → F5(チャット) → F6(メモ管理) → F7(設定)
+F2v2(ペルソナ選択) → F1v2(ペルソナ別接続) → F5(チャット) → F4(グラフ) → F6(管理) → F7(設定) → 横断
 
 ## タスク仕様書
 
 `../product-factory/products/ideamemo/tasks/` に各フローの仕様書がある。
-- `BUILD_ORDER.md` — ビルド順序と手動作業一覧
-- `f1_record_connect.md` — F1仕様書（§11にモックモード仕様）
-- `f1_revision_spec.md` — F1修正仕様書（v1レビューFB対応。**次に実行すべきタスク**）
-- `f2_auth_onboarding.md` — F2仕様書
+- `BUILD_ORDER_v2.md` — 最新ビルド順序
+- `v1_product_spec.md` (docs/) — v1全体仕様書（設計判断の根拠）
+- `f2_v2_persona.md` — F2v2: ペルソナ選択追加 ← **次に実行すべきタスク**
+- `f1_v2_pipeline.md` — F1v2: ペルソナ別接続+Brave Search+FB
+- `f5_chat.md` — F5: 深掘りチャット
+- `f4_graph.md` — F4: グラフ+掛け合わせ
+- `f6_management.md` — F6: メモ管理（最小版）
+- `f7_settings.md` — F7: 設定（最小版）
+- `cross_cutting.md` — 横断: プロファイル自動生成+上限+empty state
+
+### 旧仕様（実行済み、参考用）
+- `f1_record_connect.md` — 旧F1仕様
+- `f1_revision_spec.md` — F1修正仕様（実行済み）
+- `f2_auth_onboarding.md` — 旧F2仕様
 
 ## 運用ルール
 
