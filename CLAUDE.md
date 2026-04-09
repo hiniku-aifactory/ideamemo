@@ -17,14 +17,15 @@
 
 ## デザイン準拠
 
-**必ず `../product-factory/products/ideamemo/docs/DESIGN.md` を読んでから実装すること。**
+**必ず `docs/DESIGN_v2.md` を読んでから実装すること。**
 
-- ダーク基調 (#0A0A0A) + アンバーアクセント (#D4896A)
-- 時間グラデーション: accent色が時間帯で変化
-- フォント: Noto Serif JP (見出し), Noto Sans JP (本文), JetBrains Mono (数字), EB Garamond (英語引用)
-- 行間: 本文1.7、見出し1.4
-- 原則P1「余白が語る」P2「暗闇の中の一点」P3「静かに動く」
-- アニメーション: ease-out基本。bounceやspring禁止
+- 白基調 (#FAFAFA) + モノクロ (#222/#888/#CCC)
+- アクセントカラーはリンクのみ (#6B7B8D)
+- フォント: system-ui (見出し・本文), JetBrains Mono (数字)
+- 行間: 本文1.8、見出し1.4
+- 原則P1「幾何学が語る」P2「白が呼吸する」P3「テキストは最小」P4「品のある静けさ」
+- アニメーション: ease-out基本。bounce/spring/overshoot禁止
+- テキストトーン: 命令しない。提案しない。事実を端的に
 
 ## モックモード
 
