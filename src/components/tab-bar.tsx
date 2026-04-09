@@ -21,7 +21,7 @@ const NAV_ITEMS: NavItem[] = [
 export function TabBar() {
   const pathname = usePathname();
 
-  if (pathname === "/login" || pathname.startsWith("/record")) return null;
+  if (pathname === "/login" || pathname.startsWith("/record") || pathname === "/onboarding") return null;
 
   return (
     <nav className="bottom-nav">
