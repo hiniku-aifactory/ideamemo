@@ -30,13 +30,14 @@ interface GraphLink extends d3.SimulationLinkDatum<GraphNode> {
 
 export default function GraphPage() {
   const router = useRouter();
-  const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [filter, setFilter] = useState<FilterRange>("all");
   // ResizeObserverがコンテナのサイズを確定してから格納
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  // callback refでDOMマウント時点を正確に捕捉（useRef+[]だと早期returnで見逃す）
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
 
   // ミニパネル
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -62,10 +63,9 @@ export default function GraphPage() {
     setConnections(mockDb.connections.list());
   }, []);
 
-  // ResizeObserverでコンテナの実サイズを監視
-  // コールバックはブラウザがレイアウトを確定した後に発火するため、タイミング問題が発生しない
+  // containerElが実際にDOMにマウントされた時点でResizeObserverを起動
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerEl) return;
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
@@ -74,9 +74,9 @@ export default function GraphPage() {
         }
       }
     });
-    ro.observe(containerRef.current);
+    ro.observe(containerEl);
     return () => ro.disconnect();
-  }, []);
+  }, [containerEl]);
 
   const filteredIdeas = ideas.filter((idea) => {
     if (filter === "all") return true;
@@ -395,7 +395,7 @@ export default function GraphPage() {
 
       {/* SVGコンテナ: flex-1で残り高さを全て占有。SVGはabsolute inset-0で完全充填 */}
       <div
-        ref={containerRef}
+        ref={setContainerEl}
         className="flex-1 min-h-0 relative"
         onClick={handleBackgroundClick}
       >
