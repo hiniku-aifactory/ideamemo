@@ -14,7 +14,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/", icon: Home, label: "ホーム" },
   { href: "/folders", icon: Folder, label: "フォルダ", disabled: true },
-  { href: "/graph", icon: GitBranch, label: "グラフ", disabled: true },
+  { href: "/graph", icon: GitBranch, label: "グラフ" },
   { href: "/chat", icon: MessageCircle, label: "チャット" },
 ];
 
