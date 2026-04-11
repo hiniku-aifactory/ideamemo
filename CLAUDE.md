@@ -53,6 +53,16 @@ REVISION_SPEC_v5.md で以下を実行:
 - §9: 録音結果画面刷新（具体→抽象可視化）
 - §10: ホーム — タグクラスタプレビュー
 
+## ビルド順序（v5.1）
+
+REVISION_SPEC_v5_1.md で以下を実行（グラフ画面のみ）:
+- §1: layout.ts変更（クラスタ距離拡大+全ノード初期配置）
+- §2: graph/page.tsx全面書き換え（フラットマップ+LODズーム+フォーカス）
+- §3: breadcrumb.tsx削除
+- §4: CLAUDE.md更新
+
+v5の §6-§11 は実装済み。変更不要。
+
 ## タスク仕様書
 
 `../product-factory/products/ideamemo/tasks/` に各フローの仕様書がある。
