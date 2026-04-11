@@ -33,7 +33,7 @@ Rules:
 - Pick domains where you can imagine a SPECIFIC episode, not just a vague connection
 - Spread across different "worlds" — don't pick 3 that are similar (e.g. fashion + retail + craft)
 - DO NOT pick domains just because YOU can think of a famous example there
-  → If the first thing that comes to mind is a TED Talk or pop-science book, that domain is contaminated — pick a different one
+  → If the first thing that comes to mind is a WELL-KNOWN example (famous company, iconic product, viral video, pop-science book, TED Talk, or widely-cited case study), that domain is contaminated — pick a different one
 - Prefer domains that would SURPRISE the user as a connection point
 ```
 
@@ -48,7 +48,7 @@ Pick 3 domains from the DOMAIN_POOL.
 Output JSON only:
 {
   "domains": [
-    {"domain": "...", "reason": "why this structure appears here (1 sentence)"},
+    {"domain": "...", "reason": "why this structure plausibly appears here — no specific scenario, just the general fit (1 sentence)"},
     {"domain": "...", "reason": "..."},
     {"domain": "...", "reason": "..."}
   ]
