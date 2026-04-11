@@ -32,16 +32,22 @@
 `NEXT_PUBLIC_MOCK_MODE=true` で全外部APIをモックに切替。
 モックデータは `src/lib/mock/` 配下。API繋ぎ込み時はフラグをfalseにするだけ。
 
-## ビルド順序（v2）
+## ビルド順序（v4）
 
-F2v2(ペルソナ選択) → F1v2(ペルソナ別接続) → F5(チャット) → F4(グラフ) → F6(管理) → F7(設定) → 横断
+REVISION_SPEC_v4.md で以下を実行済み:
+- §0-1: types拡張 + モックDB拡張
+- §2-3: ホーム再設計 + quotes拡充
+- §4-6: グラフ刷新（静止配置+位置記憶+ズーム展開+紐付け）
+- §7: 深掘りチャット気づき抽出
+- §8: FB反映（波形+ヘッダー+フォルダ削除+タブ3化）
 
 ## タスク仕様書
 
 `../product-factory/products/ideamemo/tasks/` に各フローの仕様書がある。
 - `BUILD_ORDER_v2.md` — 最新ビルド順序
 - `v1_product_spec.md` (docs/) — v1全体仕様書（設計判断の根拠）
-- `f2_v2_persona.md` — F2v2: ペルソナ選択追加 ← **次に実行すべきタスク**
+- `SPEC_GRAPH_HOME_v3.md` (docs/) — グラフ詳細+深掘り転記+ホーム再設計の設計根拠
+- `REVISION_SPEC_v4.md` (docs/) — 実行仕様書（v4）
 - `f1_v2_pipeline.md` — F1v2: ペルソナ別接続+Brave Search+FB
 - `f5_chat.md` — F5: 深掘りチャット
 - `f4_graph.md` — F4: グラフ+掛け合わせ
