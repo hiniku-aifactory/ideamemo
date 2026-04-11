@@ -62,6 +62,7 @@ export default function GraphPage() {
   }, []);
 
   // ---- コンテナサイズ ----
+  // allIdeas が変わるとエンプティ→メイン表示に切り替わり containerRef が DOM に入るため依存に含める
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -71,7 +72,7 @@ export default function GraphPage() {
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [allIdeas]);
 
   // ---- 接続数マップ ----
   const connCountMap = useMemo(() => {
