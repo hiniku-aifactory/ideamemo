@@ -107,8 +107,9 @@ export function KnowledgeCard({ title, description, sourceUrl, sourceTitle, book
             )}
 
             {isExternalKnowledge && (
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                グラフに追加済み
+              <span className="text-[10px] px-1.5 py-0.5 rounded"
+                style={{ border: "0.5px solid var(--border)", color: "var(--text-muted)" }}>
+                外部知識
               </span>
             )}
           </div>
