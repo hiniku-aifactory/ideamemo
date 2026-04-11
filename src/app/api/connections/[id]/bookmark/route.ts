@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mockDb } from "@/lib/mock/db";
-import { MOCK_MODE } from "@/lib/mock/data";
 
 export async function POST(
   _request: NextRequest,
@@ -9,13 +8,9 @@ export async function POST(
   const { id } = await params;
 
   try {
-    if (MOCK_MODE) {
-      const bookmarked = mockDb.connections.toggleBookmark(id);
-      return NextResponse.json({ bookmarked });
-    }
-
-    // TODO: Supabase実装
-    return NextResponse.json({ bookmarked: false });
+    // Supabase未接続のためmockDbを常時使用
+    const bookmarked = mockDb.connections.toggleBookmark(id);
+    return NextResponse.json({ bookmarked });
   } catch (error) {
     console.error("Bookmark toggle error:", error);
     return NextResponse.json(

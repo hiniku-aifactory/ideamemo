@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { mockDb } from "@/lib/mock/db";
-import { MOCK_MODE } from "@/lib/mock/data";
 
 export async function DELETE(
   _request: NextRequest,
@@ -9,14 +8,10 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    if (MOCK_MODE) {
-      mockDb.ideas.delete(id);
-      mockDb.connections.deleteByIdea(id);
-      mockDb.chatSessions.deleteByIdea(id);
-      return NextResponse.json({ ok: true });
-    }
-
-    // TODO: Supabase CASCADE削除
+    // Supabase未接続のためmockDbを常時使用
+    mockDb.ideas.delete(id);
+    mockDb.connections.deleteByIdea(id);
+    mockDb.chatSessions.deleteByIdea(id);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[Delete] Error:", error);
