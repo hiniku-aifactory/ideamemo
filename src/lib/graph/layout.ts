@@ -1,8 +1,28 @@
-import type { GraphNode } from "./types";
+import type { GraphNode, TagCluster } from "./types";
 
 const IDEA_DISTANCE = 140;
 const KNOWLEDGE_DISTANCE = 100;
 const BASE_R = 22;
+const TAG_CLUSTER_DISTANCE = 160;
+
+export function layoutTagClusters(
+  tags: TagCluster[],
+  centerX: number,
+  centerY: number,
+): TagCluster[] {
+  if (tags.length === 0) return [];
+  return tags.map((tag, i) => {
+    const angleDeg = -90 + (360 / tags.length) * i;
+    const rad = (angleDeg * Math.PI) / 180;
+    const dist = tags.length <= 3 ? TAG_CLUSTER_DISTANCE * 0.8 : TAG_CLUSTER_DISTANCE;
+    return {
+      ...tag,
+      x: centerX + dist * Math.cos(rad),
+      y: centerY + dist * Math.sin(rad),
+      r: Math.max(40, 30 + tag.nodeCount * 6),
+    };
+  });
+}
 
 export function layoutSatellites(
   centerX: number,

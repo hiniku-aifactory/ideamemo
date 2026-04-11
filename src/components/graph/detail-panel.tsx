@@ -29,7 +29,12 @@ export function DetailPanel({ node, connectionId, onDetail, onDeepDive, onCombin
         </>
       ) : (
         <>
-          <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>{node.summary}</p>
+          <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>{node.graphLabel || node.summary}</p>
+          {node.graphLabel && node.graphLabel !== node.summary && (
+            <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>
+              {node.summary.slice(0, 30)}{node.summary.length > 30 ? "…" : ""}
+            </p>
+          )}
           {node.keywords.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">
               {node.keywords.slice(0, 4).map((kw) => (
