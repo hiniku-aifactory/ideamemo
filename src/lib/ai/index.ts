@@ -114,11 +114,26 @@ concrete → structure の変換。元の場面を完全に離れて書く。
 1つのメモが複数の視点に属する場合、2-3タグつける。先頭がメインタグ。
 新規タグは2文字〜4文字の漢語が望ましい（既存タグとトーンを合わせる）。`;
 
+// JSON抽出ヘルパー
+function extractJSON(text: string): string {
+  let cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    cleaned = cleaned.slice(start, end + 1);
+  }
+  return cleaned;
+}
+
 // P2: 構造化
 export async function structure(transcript: string): Promise<Structured> {
   if (MOCK) {
     await delay(1500);
     return MOCK_STRUCTURES[Math.floor(Math.random() * MOCK_STRUCTURES.length)];
+  }
+
+  if (!transcript || transcript.trim().length < 5) {
+    throw new Error("Transcript is empty or too short");
   }
 
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
@@ -133,8 +148,7 @@ export async function structure(transcript: string): Promise<Structured> {
   });
 
   const text = (response.content[0] as { type: string; text: string }).text.trim();
-  const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  const parsed = JSON.parse(jsonStr);
+  const parsed = JSON.parse(extractJSON(text));
 
   if (!parsed.summary || !parsed.keywords || !parsed.graph_label) {
     throw new Error("Structuring output missing required fields");

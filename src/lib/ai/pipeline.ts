@@ -30,6 +30,20 @@ interface SearchResult {
   url: string;
 }
 
+// --- JSON抽出ヘルパー ---
+// ClaudeがJSON前後にテキストを付けることがあるため、堅牢に抽出する
+function extractJSON(text: string): string {
+  // まず```json...```を除去
+  let cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  // JSONオブジェクトの開始/終了位置を探す
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    cleaned = cleaned.slice(start, end + 1);
+  }
+  return cleaned;
+}
+
 // --- 品質判定パターン ---
 
 const FAMOUS_PATTERNS = [
@@ -188,8 +202,7 @@ Output JSON only:
   });
 
   const domainText = (domainRes.content[0] as { type: string; text: string }).text.trim();
-  const domainJson = domainText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  const domainParsed = JSON.parse(domainJson) as {
+  const domainParsed = JSON.parse(extractJSON(domainText)) as {
     domains: { domain: string; reason: string }[];
   };
 
@@ -284,8 +297,7 @@ ${searchResultsText}
         });
 
         const synthText = (synthRes.content[0] as { type: string; text: string }).text.trim();
-        const synthJson = synthText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-        const parsed = JSON.parse(synthJson) as Record<string, unknown>;
+        const parsed = JSON.parse(extractJSON(synthText)) as Record<string, unknown>;
 
         return { parsed, sources };
       };
