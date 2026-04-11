@@ -7,7 +7,7 @@ import { AppHeader } from "@/components/app-header";
 import { NodePreview } from "@/components/node-preview";
 import { pickHomeIdea } from "@/lib/home-picker";
 import { quotes } from "@/lib/quotes";
-import type { Idea, Connection } from "@/lib/types";
+import type { Idea } from "@/lib/types";
 
 interface Quote {
   text: string;
@@ -34,19 +34,13 @@ export default function HomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [ideas, setIdeas] = useState<Idea[]>([]);
-  const [connections, setConnections] = useState<Connection[]>([]);
   const [fetching, setFetching] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
-      const [ideasRes, connRes] = await Promise.all([
-        fetch("/api/ideas"),
-        fetch("/api/connections"),
-      ]);
+      const ideasRes = await fetch("/api/ideas");
       const ideasData = await ideasRes.json();
-      const connData = connRes.ok ? await connRes.json() : { connections: [] };
       setIdeas(ideasData.ideas || []);
-      setConnections(connData.connections || []);
     } catch (err) {
       console.error("Failed to fetch:", err);
     } finally {
@@ -75,7 +69,7 @@ export default function HomePage() {
     return null;
   }
 
-  const pick = !fetching ? pickHomeIdea(ideas, connections) : null;
+  const pick = !fetching ? pickHomeIdea(ideas, []) : null;
   const quote = getDailyQuote();
 
   return (
@@ -95,10 +89,10 @@ export default function HomePage() {
             {/* ノードプレビュー */}
             <button
               className="w-full max-w-xs"
-              onClick={() => router.push(`/graph/explore?root=${pick.idea.id}`)}
+              onClick={() => router.push(`/graph`)}
               aria-label={pick.idea.summary}
             >
-              <NodePreview idea={pick.idea} connections={pick.connections} />
+              <NodePreview idea={pick.idea} allIdeas={ideas} />
             </button>
 
             {/* サマリー */}
