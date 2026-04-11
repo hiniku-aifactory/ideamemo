@@ -402,7 +402,7 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
         )}
 
         {/* 初期サジェスト */}
-        {messages.length === 0 && connectionId && !suggestDismissed && (
+        {messages.filter((m) => m.role === "user").length === 0 && (connectionId || contextIdeas.connection) && !suggestDismissed && (
           <SuggestButtons type="initial" onSelect={handleSuggestSelect} />
         )}
 

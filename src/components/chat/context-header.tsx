@@ -23,8 +23,10 @@ export function ContextHeader({ ideaFrom, ideaTo, connection }: ContextHeaderPro
       style={{ background: "var(--bg-secondary)", position: "sticky", top: 0, zIndex: 10 }}>
       <button onClick={() => setExpanded(!expanded)} className="w-full text-left p-3">
         <div className="flex items-center gap-2">
-          <button onClick={(e) => { e.stopPropagation(); router.push(`/memo/${ideaFrom.id}`); }}
-            className="flex items-center gap-1.5 min-w-0">
+          <div role="button" tabIndex={0}
+            onClick={(e) => { e.stopPropagation(); router.push(`/memo/${ideaFrom.id}`); }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/memo/${ideaFrom.id}`); } }}
+            className="flex items-center gap-1.5 min-w-0 cursor-pointer">
             <div className="flex-shrink-0 rounded-full flex items-center justify-center"
               style={{ width: 22, height: 22, border: "0.5px solid var(--border)" }}>
               <span style={{ fontSize: 8, color: "var(--text-muted)" }}>○</span>
@@ -32,7 +34,7 @@ export function ContextHeader({ ideaFrom, ideaTo, connection }: ContextHeaderPro
             <span className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
               {ideaFrom.summary.slice(0, 10)}
             </span>
-          </button>
+          </div>
           <span className="text-[11px] flex-shrink-0" style={{ color: "var(--text-muted)" }}>←→</span>
           <span className="text-[13px] font-medium truncate" style={{ color: "var(--text-primary)" }}>
             {ideaTo ? ideaTo.summary.slice(0, 10) : connection.external_knowledge_title?.slice(0, 10) ?? ""}
