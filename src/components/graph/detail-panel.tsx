@@ -9,10 +9,9 @@ interface DetailPanelProps {
   onDeepDive: (connectionId: string) => void;
   onDeepDiveSingle: () => void;
   onCombine: () => void;
-  onAddKnowledge: () => void;
 }
 
-export function DetailPanel({ node, connections, onDetail, onDeepDive, onDeepDiveSingle, onCombine, onAddKnowledge }: DetailPanelProps) {
+export function DetailPanel({ node, connections, onDetail, onDeepDive, onDeepDiveSingle, onCombine }: DetailPanelProps) {
   return (
     <div className="absolute left-4 right-4 rounded-xl p-3.5 animate-page-enter"
       style={{
@@ -78,8 +77,6 @@ export function DetailPanel({ node, connections, onDetail, onDeepDive, onDeepDiv
               className="text-[11px]" style={{ color: "var(--accent)" }}>detail →</button>
             <button onClick={(e) => { e.stopPropagation(); onCombine(); }}
               className="text-[11px]" style={{ color: "var(--text-muted)" }}>combine</button>
-            <button onClick={(e) => { e.stopPropagation(); onAddKnowledge(); }}
-              className="text-[11px] ml-auto" style={{ color: "var(--text-muted)" }}>+ 外部リソース</button>
           </div>
         </>
       )}

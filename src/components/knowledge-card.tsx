@@ -11,6 +11,7 @@ interface Props {
   onBookmark?: () => void;
   connectionId?: string;
   onDeepDive?: (connId: string) => void;
+  isExternalKnowledge?: boolean;
 }
 
 // ♡ ブックマークアイコン
@@ -33,7 +34,7 @@ function BookmarkHeart({ filled, size = 14 }: { filled: boolean; size?: number }
   );
 }
 
-export function KnowledgeCard({ title, description, sourceUrl, sourceTitle, bookmarked = false, onBookmark, connectionId, onDeepDive }: Props) {
+export function KnowledgeCard({ title, description, sourceUrl, sourceTitle, bookmarked = false, onBookmark, connectionId, onDeepDive, isExternalKnowledge = false }: Props) {
   const [isBookmarked, setIsBookmarked] = useState(bookmarked);
 
   const handleBookmark = () => {
@@ -50,8 +51,8 @@ export function KnowledgeCard({ title, description, sourceUrl, sourceTitle, book
           style={{
             width: "5px",
             height: "5px",
-            border: "1px solid #BBBBBB",
-            background: "var(--bg-primary)",
+            border: isExternalKnowledge ? "1px solid var(--accent)" : "1px solid #BBBBBB",
+            background: isExternalKnowledge ? "var(--accent)" : "var(--bg-primary)",
           }}
         />
         <div
@@ -103,6 +104,12 @@ export function KnowledgeCard({ title, description, sourceUrl, sourceTitle, book
                 className="text-[10px]" style={{ color: "var(--accent)" }}>
                 深掘り →
               </button>
+            )}
+
+            {isExternalKnowledge && (
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                グラフに追加済み
+              </span>
             )}
           </div>
 

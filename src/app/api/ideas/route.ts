@@ -146,6 +146,7 @@ export async function POST(request: NextRequest) {
             source_title: connResult.source_title ?? conn.external_knowledge_title ?? null,
             quality_score: conn.quality_score,
             bookmarked: false,
+            connection_type: conn.connection_type,
           });
         }
 

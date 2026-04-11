@@ -6,7 +6,6 @@ import * as d3 from "d3";
 import { AppHeader } from "@/components/app-header";
 import { DetailPanel } from "@/components/graph/detail-panel";
 import { CombinePanel } from "@/components/graph/combine-panel";
-import { KnowledgeForm } from "@/components/graph/knowledge-form";
 import { mockDb } from "@/lib/mock/db";
 import type { Idea, Connection } from "@/lib/types";
 import type { GraphNode, GraphLink, TagCluster } from "@/lib/graph/types";
@@ -48,7 +47,6 @@ export default function GraphPage() {
     ideaB: { summary: string };
   } | null>(null);
   const [combineLoading, setCombineLoading] = useState(false);
-  const [showKnowledgeForm, setShowKnowledgeForm] = useState(false);
 
   // ---- データ読み込み ----
   useEffect(() => {
@@ -300,34 +298,6 @@ export default function GraphPage() {
     setCombineMode(false);
     setCombineNodeA(null);
   }, []);
-
-  // ---- 外部リソース保存 ----
-  const handleSaveKnowledge = useCallback((data: { title: string; url: string; description: string }) => {
-    if (!selectedNode) return;
-    const newConn: Connection = {
-      id: `conn-ext-${Date.now()}`,
-      idea_from_id: selectedNode.id,
-      idea_to_id: null,
-      connection_type: "external_knowledge",
-      source: "manual",
-      persona_label: null,
-      reason: data.description,
-      action_suggestion: "",
-      quality_score: null,
-      external_knowledge_title: data.title,
-      external_knowledge_url: data.url || null,
-      external_knowledge_summary: data.description,
-      source_idea_summary: null,
-      user_note: null,
-      feedback: null,
-      feedback_at: null,
-      bookmarked: false,
-      created_at: new Date().toISOString(),
-    };
-    mockDb.connections.insert(newConn);
-    setAllConnections(mockDb.connections.list());
-    setShowKnowledgeForm(false);
-  }, [selectedNode]);
 
   // ---- ノードのアイデア間接続取得（外部知識は除外。外部知識ノードは直接タップで深掘り） ----
   const getNodeConnections = useCallback((nodeId: string) => {
@@ -667,7 +637,7 @@ export default function GraphPage() {
       </div>
 
       {/* 詳細パネル */}
-      {selectedNode && !combineResult && !combineMode && !showKnowledgeForm && (
+      {selectedNode && !combineResult && !combineMode && (
         <DetailPanel
           node={selectedNode}
           connections={!selectedNode.isKnowledge ? getNodeConnections(selectedNode.id) : []}
@@ -675,15 +645,6 @@ export default function GraphPage() {
           onDeepDive={(connId) => router.push(`/chat?connection=${connId}`)}
           onDeepDiveSingle={() => router.push(`/chat?idea=${selectedNode.id}`)}
           onCombine={handleStartCombine}
-          onAddKnowledge={() => setShowKnowledgeForm(true)}
-        />
-      )}
-
-      {/* 外部リソース追加フォーム */}
-      {showKnowledgeForm && selectedNode && (
-        <KnowledgeForm
-          onSave={handleSaveKnowledge}
-          onClose={() => setShowKnowledgeForm(false)}
         />
       )}
 

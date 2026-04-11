@@ -20,6 +20,7 @@ interface ConnectionData {
   source_title?: string | null;
   quality_score?: number;
   bookmarked?: boolean;
+  connection_type?: string;
 }
 
 interface Result {
@@ -340,6 +341,7 @@ export default function RecordPage() {
                         fetch(`/api/connections/${conn.id}/bookmark`, { method: "POST" });
                       }
                     }}
+                    isExternalKnowledge={conn.connection_type === "external_knowledge"}
                   />
                 </div>
               ))}
