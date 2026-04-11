@@ -1,10 +1,10 @@
 import type { GraphNode, TagCluster } from "./types";
 
 // --- 定数 ---
-const CLUSTER_DISTANCE = 280;   // クラスタ中心間の距離（v5: 160 → 拡大）
+const CLUSTER_DISTANCE = 200;   // クラスタ中心間の距離（SP画面幅375px基準）
 const NODE_DISTANCE = 80;       // クラスタ内ノード間の配置距離
 const KNOWLEDGE_DISTANCE = 50;  // 外部知識のノードからの距離
-const BASE_R = 22;              // ノードの基本半径
+const BASE_R = 14;              // ノードの基本半径
 
 // --- クラスタ配置 ---
 // 決定論的な幾何学配置。force simulation は使わない。
@@ -22,7 +22,7 @@ export function layoutTagClusters(
       ...tag,
       x: centerX + dist * Math.cos(rad),
       y: centerY + dist * Math.sin(rad),
-      r: Math.max(60, 40 + tag.nodeCount * 12), // v5より大きめ（ノードが中に入る）
+      r: Math.max(50, 30 + tag.nodeCount * 10),
     };
   });
 }
@@ -80,7 +80,7 @@ export function layoutKnowledge(
 }
 
 export function calcNodeRadius(connCount: number): number {
-  return Math.min(28, BASE_R + connCount * 2);
+  return Math.min(20, BASE_R + connCount * 2);
 }
 
 export { CLUSTER_DISTANCE, NODE_DISTANCE, KNOWLEDGE_DISTANCE, BASE_R };

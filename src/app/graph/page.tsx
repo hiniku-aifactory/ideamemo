@@ -433,13 +433,13 @@ export default function GraphPage() {
       .attr("class", "node-label")
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "central")
-      .attr("font-size", "11px")
+      .attr("font-size", "10px")
       .attr("fill", "var(--text-secondary)")
       .attr("pointer-events", "none")
       .attr("opacity", 0)
       .text((d) => {
         const label = d.graphLabel || d.summary;
-        return label.length > 5 ? label.slice(0, 5) + "…" : label;
+        return label.length > 7 ? label.slice(0, 7) + "…" : label;
       });
 
     // 背景タップ
