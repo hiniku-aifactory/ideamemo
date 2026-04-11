@@ -230,6 +230,22 @@ export default function RecordPage() {
     }
   };
 
+  const handleDeepDive = useCallback((connId: string) => {
+    const conn = connections.find((c) => c.id === connId);
+    if (conn && result.structured) {
+      try {
+        localStorage.setItem(`chat_ctx_${connId}`, JSON.stringify({
+          memo_summary: result.structured.summary,
+          memo_abstract_principle: result.structured.abstract_principle,
+          memo_latent_question: result.structured.latent_question ?? "",
+          connection_title: conn.title,
+          connection_description: conn.description,
+        }));
+      } catch {}
+    }
+    router.push(`/chat?connection=${connId}`);
+  }, [connections, result, router]);
+
   const handleBack = () => {
     if (phase === "recording") {
       if (confirm("録音を中止しますか?")) {
@@ -341,6 +357,8 @@ export default function RecordPage() {
                         fetch(`/api/connections/${conn.id}/bookmark`, { method: "POST" });
                       }
                     }}
+                    connectionId={conn.id}
+                    onDeepDive={handleDeepDive}
                     isExternalKnowledge={conn.connection_type === "external_knowledge"}
                   />
                 </div>

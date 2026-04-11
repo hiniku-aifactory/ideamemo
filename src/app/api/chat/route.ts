@@ -20,6 +20,15 @@ interface ChatContext {
   };
 }
 
+// クライアントから渡されるインラインコンテキスト（サーバーレスでmockDbが使えない場合のフォールバック）
+interface InlineChatContext {
+  memo_summary: string;
+  memo_abstract_principle: string;
+  memo_latent_question: string;
+  connection_title: string;
+  connection_description: string;
+}
+
 // P4 systemプロンプト（ターン別振る舞い込み）
 function buildDeepDiveSystemPrompt(context: ChatContext, currentTurn: number): string {
   return `あなたはユーザーの気づきと外部知識の接続を一緒に掘り下げる相棒。
@@ -99,8 +108,21 @@ function shouldSearch(message: string, currentTurn: number): boolean {
   return triggers.some((t) => message.includes(t));
 }
 
-// contextからChatContextを構築（mockDbから情報取得）
-function buildChatContext(connectionId: string | undefined): ChatContext | null {
+// contextからChatContextを構築（mockDb優先、フォールバックとしてinlineを使用）
+function buildChatContext(connectionId: string | undefined, inline?: InlineChatContext | null): ChatContext | null {
+  if (inline) {
+    return {
+      memo: {
+        summary: inline.memo_summary,
+        abstract_principle: inline.memo_abstract_principle,
+        latent_question: inline.memo_latent_question,
+      },
+      connection: {
+        title: inline.connection_title,
+        description: inline.connection_description,
+      },
+    };
+  }
   if (!connectionId) return null;
   const conn = mockDb.connections.get(connectionId);
   if (!conn) return null;
@@ -122,7 +144,13 @@ export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
 
   try {
-    const { sessionId, message, context } = await request.json();
+    const { sessionId, message, context, inlineContext, messageHistory } = await request.json() as {
+      sessionId?: string;
+      message?: string;
+      context?: { connectionId?: string };
+      inlineContext?: InlineChatContext | null;
+      messageHistory?: { role: "user" | "assistant"; content: string }[];
+    };
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -179,7 +207,7 @@ export async function POST(request: NextRequest) {
               send("message", { role: "assistant", content: MOCK_INITIAL_MESSAGE });
             } else {
               // リアルモード: P4初期メッセージ生成
-              const chatContext = buildChatContext(context.connectionId);
+              const chatContext = buildChatContext(context.connectionId, inlineContext);
               if (chatContext && process.env.ANTHROPIC_API_KEY) {
                 const { default: Anthropic } = await import("@anthropic-ai/sdk");
                 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -263,9 +291,13 @@ export async function POST(request: NextRequest) {
               const { default: Anthropic } = await import("@anthropic-ai/sdk");
               const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-              // ターン数チェック
+              // ターン数チェック（mockDbが空の場合はクライアントから受け取った履歴をフォールバックに使用）
               const existingMsgs = mockDb.chatMessages.listBySession(currentSessionId);
-              const userMsgCount = existingMsgs.filter((m) => m.role === "user").length;
+              const clientHistory = messageHistory ?? [];
+              const baseHistory = existingMsgs.length > 0
+                ? existingMsgs.map((m) => ({ role: m.role as "user" | "assistant", content: m.content }))
+                : clientHistory;
+              const userMsgCount = baseHistory.filter((m) => m.role === "user").length;
 
               if (userMsgCount >= MAX_TURNS) {
                 send("error", { code: "CHAT_LIMIT", message: "このチャットは5ターンで区切りです" });
@@ -275,8 +307,8 @@ export async function POST(request: NextRequest) {
 
               const currentTurn = userMsgCount + 1;
 
-              // contextからsystem prompt構築
-              const chatContext = buildChatContext(context?.connectionId);
+              // contextからsystem prompt構築（inlineContextをフォールバックとして使用）
+              const chatContext = buildChatContext(context?.connectionId, inlineContext);
               if (!chatContext) throw new Error("Chat context not found");
               const systemPrompt = buildDeepDiveSystemPrompt(chatContext, currentTurn);
 
@@ -290,10 +322,7 @@ export async function POST(request: NextRequest) {
               }
 
               // 会話履歴構築
-              const history = existingMsgs.map((m) => ({
-                role: m.role as "user" | "assistant",
-                content: m.content,
-              }));
+              const history = [...baseHistory];
               history.push({ role: "user", content: message + extraContext });
 
               // ストリーミング

@@ -27,9 +27,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Supabase未設定時はmockフォールバック
+  const useLocalAuth = MOCK_MODE || !process.env.NEXT_PUBLIC_SUPABASE_URL;
+
   useEffect(() => {
-    if (MOCK_MODE) {
-      // In mock mode, check localStorage for mock login state
+    if (useLocalAuth) {
       const isLoggedIn = localStorage.getItem("mock_logged_in");
       if (isLoggedIn) {
         setUser(MOCK_USER as User);
@@ -57,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    if (MOCK_MODE) {
+    if (useLocalAuth) {
       localStorage.setItem("mock_logged_in", "true");
       setUser(MOCK_USER as User);
       const settings = mockDb.userSettings.get("mock-user-001");
@@ -73,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithMagicLink = useCallback(async (email: string) => {
-    if (MOCK_MODE) {
+    if (useLocalAuth) {
       localStorage.setItem("mock_logged_in", "true");
       setUser(MOCK_USER as User);
       const settings = mockDb.userSettings.get("mock-user-001");
@@ -91,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    if (MOCK_MODE) {
+    if (useLocalAuth) {
       localStorage.removeItem("mock_logged_in");
       setUser(null);
       window.location.href = "/login";

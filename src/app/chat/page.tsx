@@ -135,12 +135,17 @@ function ChatView({ sessionId, connectionId, ideaId }: { sessionId?: string; con
     }
   }, [messages, streamingContent]);
 
+  const getStoredContext = (connId: string) => {
+    try { return JSON.parse(localStorage.getItem(`chat_ctx_${connId}`) ?? "null"); } catch { return null; }
+  };
+
   const initNewSession = useCallback(async (connId: string) => {
     try {
+      const inlineContext = getStoredContext(connId);
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ context: { connectionId: connId } }),
+        body: JSON.stringify({ context: { connectionId: connId }, inlineContext }),
       });
 
       if (!response.body) return;
@@ -295,10 +300,16 @@ function ChatView({ sessionId, connectionId, ideaId }: { sessionId?: string; con
       role: "user" as const, content: text, created_at: new Date().toISOString(),
     }]);
     try {
+      const inlineContext = connectionId ? getStoredContext(connectionId) : null;
       const response = await fetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: currentSessionId, message: text,
-          context: connectionId ? { connectionId } : undefined }),
+        body: JSON.stringify({
+          sessionId: currentSessionId,
+          message: text,
+          context: connectionId ? { connectionId } : undefined,
+          inlineContext,
+          messageHistory: messages.map((m) => ({ role: m.role, content: m.content })),
+        }),
       });
       if (!response.body) return;
       const reader = response.body.getReader();
