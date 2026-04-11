@@ -88,9 +88,51 @@ function calcQualityScore(
   return Math.max(Math.min(score, 1.0), 0.1);
 }
 
-// 履歴セクション（TODO: Supabase接続後に直近20件から生成）
-async function buildHistorySection(_userId: string): Promise<string> {
-  return "";
+// 履歴セクション: 直近接続から使用ドメイン+タイトルを取得して重複防止
+async function buildHistorySection(userId: string): Promise<string> {
+  try {
+    const { mockDb } = await import("@/lib/mock/db");
+    // userIdのアイデアに紐づく接続を取得
+    const userIdeas = mockDb.ideas.listByUser(userId);
+    if (userIdeas.length === 0) return "";
+
+    const recentConnections: { domain: string; title: string }[] = [];
+    for (const idea of userIdeas.slice(-10)) {
+      const conns = mockDb.connections.listByIdea(idea.id);
+      for (const c of conns) {
+        if (c.persona_label && c.external_knowledge_title) {
+          recentConnections.push({
+            domain: c.persona_label, // search_domainがpersona_labelに入っている
+            title: c.external_knowledge_title,
+          });
+        }
+      }
+    }
+
+    if (recentConnections.length === 0) return "";
+
+    const domainCounts: Record<string, number> = {};
+    recentConnections.forEach((c) => {
+      domainCounts[c.domain] = (domainCounts[c.domain] || 0) + 1;
+    });
+
+    const overused = Object.entries(domainCounts)
+      .filter(([, count]) => count >= 3)
+      .map(([domain]) => domain);
+
+    let section = "\nDIVERSITY CONSTRAINT:\n";
+    if (overused.length > 0) {
+      section += `These domains have been used 3+ times recently. AVOID them: ${overused.join(", ")}\n`;
+    }
+    section += "\nRecent card titles (DO NOT generate similar topics):\n";
+    recentConnections
+      .slice(-10)
+      .forEach((c) => { section += `- ${c.title}\n`; });
+
+    return section;
+  } catch {
+    return "";
+  }
 }
 
 // --- プロンプト定数 ---
@@ -233,6 +275,7 @@ export async function generateSingleConnection(
   input: PipelineInput,
   domain: string,
   novelty: NoveltyLevel,
+  retried = false,
 ): Promise<PipelineOutput> {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
@@ -270,7 +313,7 @@ ${
     : "FAMILIAR OK: Well-known examples acceptable IF framed as specific episodes, not theory names. Still prefer lesser-known examples."
 }
 
-Generate ONE English search query (4-8 words).`,
+Generate ONE English search query (4-8 words).${retried ? "\n\nRETRY: Your previous query produced low-quality results. Generate a COMPLETELY DIFFERENT query — different angle, different proper nouns, different framing." : ""}`,
       },
     ],
   });
@@ -280,12 +323,21 @@ Generate ONE English search query (4-8 words).`,
   // Gemini Grounding検索
   const { text: groundingText, sources } = await groundingSearchWithText(searchQuery);
 
-  const searchResultsText =
-    sources.length > 0
-      ? sources.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}`).join("\n\n")
-      : groundingText.trim()
-        ? `[検索テキスト]\n${groundingText.slice(0, 500)}`
-        : `[検索結果なし — あなたの知識から、このドメインでこの構造が現れる具体的な事実を1つ挙げてください。source_urlはnullにしてください]`;
+  // groundingTextは常に合成に渡す（sourcesがあってもタイトル+URLだけでは情報不足）
+  let searchResultsText: string;
+  if (sources.length > 0 && groundingText.trim()) {
+    // ソースあり＋テキストあり: 両方渡す（テキストが事実の主軸、ソースは出典）
+    const sourcesBlock = sources.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}`).join("\n");
+    searchResultsText = `[検索テキスト]\n${groundingText.slice(0, 800)}\n\n[出典]\n${sourcesBlock}`;
+  } else if (groundingText.trim()) {
+    // テキストのみ（ソースなし）
+    searchResultsText = `[検索テキスト]\n${groundingText.slice(0, 800)}`;
+  } else if (sources.length > 0) {
+    // ソースのみ（テキストなし — まれ）
+    searchResultsText = sources.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}`).join("\n\n");
+  } else {
+    searchResultsText = `[検索結果なし — あなたの知識から、このドメインでこの構造が現れる具体的な事実を1つ挙げてください。source_urlはnullにしてください]`;
+  }
 
   // プロンプト②: 接続合成
   const synthRes = await anthropic.messages.create({
@@ -337,6 +389,12 @@ ${searchResultsText}
     novelty,
     []
   );
+
+  // リトライ: quality < 0.5 の場合、別クエリで1回だけ再試行
+  if (quality < 0.5 && !retried) {
+    console.warn(`[P3] Low quality (${quality.toFixed(2)}) for domain ${domain}, retrying with different query`);
+    return generateSingleConnection(input, domain, novelty, true);
+  }
 
   return {
     title: (parsed.title as string) ?? "",
