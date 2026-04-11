@@ -6,6 +6,8 @@ import { maybeUpdateProfile } from "@/lib/ai/profile";
 import type { Idea, Connection } from "@/lib/types";
 import type { PersonaId } from "@/lib/personas";
 
+export const maxDuration = 60; // P1+P2+P3パイプライン用（Vercel Pro: 最大60秒）
+
 const CONNECTION_COUNT = 3;
 const MEMO_LIMIT = 20;
 

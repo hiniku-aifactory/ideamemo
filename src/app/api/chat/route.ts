@@ -3,6 +3,8 @@ import { mockDb } from "@/lib/mock/db";
 import { MOCK_MODE } from "@/lib/mock/data";
 import { MOCK_CHAT_RESPONSES, MOCK_INITIAL_MESSAGE } from "@/lib/mock/chat";
 
+export const maxDuration = 60; // チャットストリーミング用
+
 // --- P4 リアルモード用定数・ヘルパー ---
 // docs/prompts/P4_deepdive_chat.md から引用
 
