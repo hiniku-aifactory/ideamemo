@@ -45,32 +45,30 @@ export function DetailPanel({ node, connections, onDetail, onDeepDive, onDeepDiv
             </div>
           )}
 
-          {/* 深掘りボタン: 単体 + 接続別 */}
-          <div className="mt-2.5 -mx-1 overflow-x-auto scrollbar-hide">
-            <div className="flex gap-2 px-1">
-              {/* 単体深掘り（常に表示） */}
-              <button onClick={(e) => { e.stopPropagation(); onDeepDiveSingle(); }}
-                className="flex-shrink-0 text-left px-2.5 py-1.5 rounded-lg"
-                style={{ border: "0.5px solid var(--border)", maxWidth: 160 }}>
-                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>このメモを</p>
-                <span className="text-[10px]" style={{ color: "var(--accent)" }}>深掘り →</span>
-              </button>
-              {/* 接続別深掘り */}
-              {connections.map((conn) => (
-                <button key={conn.id}
-                  onClick={(e) => { e.stopPropagation(); onDeepDive(conn.id); }}
-                  className="flex-shrink-0 text-left px-2.5 py-1.5 rounded-lg"
-                  style={{ border: "0.5px solid var(--border)", maxWidth: 160 }}>
-                  <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                    {conn.targetSummary.slice(0, 20)}{conn.targetSummary.length > 20 ? "…" : ""}
-                  </p>
-                  <span className="text-[10px]" style={{ color: "var(--accent)" }}>深掘り →</span>
-                </button>
-              ))}
-            </div>
+          {/* 単体深掘り */}
+          <div className="flex items-center justify-between mt-2.5">
+            <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>このメモを</span>
+            <button onClick={(e) => { e.stopPropagation(); onDeepDiveSingle(); }}
+              className="text-[11px]" style={{ color: "var(--accent)" }}>深掘り →</button>
           </div>
 
-          <div className="flex items-center gap-4 mt-2">
+          {/* 接続別深掘り（各行に個別配置） */}
+          {connections.length > 0 && (
+            <div className="mt-1 space-y-1">
+              {connections.map((conn) => (
+                <div key={conn.id} className="flex items-center justify-between">
+                  <span className="text-[11px] truncate mr-2" style={{ color: "var(--text-muted)" }}>
+                    {conn.targetSummary.slice(0, 22)}{conn.targetSummary.length > 22 ? "…" : ""}
+                  </span>
+                  <button onClick={(e) => { e.stopPropagation(); onDeepDive(conn.id); }}
+                    className="flex-shrink-0 text-[11px]" style={{ color: "var(--accent)" }}>深掘り →</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-4 mt-2.5 pt-2"
+            style={{ borderTop: "0.5px solid var(--border-light)" }}>
             <button onClick={(e) => { e.stopPropagation(); onDetail(); }}
               className="text-[11px]" style={{ color: "var(--accent)" }}>detail →</button>
             <button onClick={(e) => { e.stopPropagation(); onCombine(); }}
