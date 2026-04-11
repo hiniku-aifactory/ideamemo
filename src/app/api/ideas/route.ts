@@ -62,11 +62,57 @@ export async function POST(request: NextRequest) {
         const personas: PersonaId[] = personasStr ? JSON.parse(personasStr) : ["builder"];
 
         // 2. 文字起こし
-        const transcript = await transcribe(audio);
+        let transcript: string;
+        try {
+          transcript = await transcribe(audio);
+        } catch (e) {
+          console.error("[A01] Transcription failed:", e);
+          send("error", {
+            code: "TRANSCRIPTION_FAILED",
+            message: "音声をうまく聞き取れませんでした。もう一度録音してみてください",
+            retry: false,
+          });
+          controller.close();
+          return;
+        }
+
+        if (!transcript || transcript.trim().length < 5) {
+          send("error", {
+            code: "TRANSCRIPT_TOO_SHORT",
+            message: "音声が短すぎるか、聞き取れませんでした。もう少しはっきり話してみてください",
+            retry: false,
+          });
+          controller.close();
+          return;
+        }
+
         send("transcription", { transcript });
 
         // 3. 構造化
-        const structured = await structure(transcript);
+        let structured;
+        try {
+          structured = await structure(transcript);
+        } catch (e) {
+          console.error("[A01] Structuring failed:", e);
+          send("error", {
+            code: "STRUCTURING_FAILED",
+            message: "内容をうまく整理できませんでした。もう一度録音してみてください",
+            retry: false,
+          });
+          controller.close();
+          return;
+        }
+
+        if (!structured.summary || !structured.graph_label) {
+          send("error", {
+            code: "STRUCTURING_INCOMPLETE",
+            message: "内容をうまく整理できませんでした。もう一度録音してみてください",
+            retry: false,
+          });
+          controller.close();
+          return;
+        }
+
         send("structured", structured);
 
         // 4. アイデア保存
