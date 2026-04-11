@@ -67,7 +67,7 @@ function SessionList({ onSelect }: { onSelect: (id: string) => void }) {
 }
 
 // チャットビュー
-function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionId?: string }) {
+function ChatView({ sessionId, connectionId, ideaId }: { sessionId?: string; connectionId?: string; ideaId?: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -105,12 +105,17 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
         // 新規セッション作成
         initNewSession(connectionId);
       }
+    } else if (ideaId) {
+      // 単体メモをコンテキストにチャット開始
+      const idea = mockDb.ideas.get(ideaId) ?? null;
+      if (idea) setContextIdeas({ from: idea, to: null, connection: null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, connectionId]);
+  }, [sessionId, connectionId, ideaId]);
 
-  // コンテキストideas取得
+  // コンテキストideas取得（ideaId単体モードでは初期化useEffectで設定済みのためスキップ）
   useEffect(() => {
+    if (ideaId) return;
     const cid = connectionId ?? (() => {
       if (!currentSessionId) return null;
       const session = mockDb.chatSessions.get(currentSessionId);
@@ -121,7 +126,7 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
     const from = conn ? mockDb.ideas.get(conn.idea_from_id) ?? null : null;
     const to = conn?.idea_to_id ? mockDb.ideas.get(conn.idea_to_id) ?? null : null;
     setContextIdeas({ from, to, connection: conn });
-  }, [currentSessionId, connectionId]);
+  }, [currentSessionId, connectionId, ideaId]);
 
   // スクロール
   useEffect(() => {
@@ -366,6 +371,17 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
 
       <ContextHeader ideaFrom={contextIdeas.from} ideaTo={contextIdeas.to} connection={contextIdeas.connection} />
 
+      {/* 単体メモ深掘りのコンテキストヘッダー */}
+      {ideaId && contextIdeas.from && !contextIdeas.connection && (
+        <div className="mx-4 mb-2 rounded-lg p-3"
+          style={{ background: "var(--bg-secondary)", border: "0.5px solid var(--border-light)" }}>
+          <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+            {contextIdeas.from.summary.slice(0, 24)}{contextIdeas.from.summary.length > 24 ? "…" : ""}
+          </p>
+          <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>このメモを深掘り</p>
+        </div>
+      )}
+
       {/* メッセージ一覧 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
         {messages.map((msg) => (
@@ -516,8 +532,9 @@ function ChatPageInner() {
 
   const connectionId = searchParams.get("connection") ?? undefined;
   const sessionId = searchParams.get("session") ?? undefined;
+  const ideaId = searchParams.get("idea") ?? undefined;
 
-  const hasContext = connectionId || sessionId;
+  const hasContext = connectionId || sessionId || ideaId;
 
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
@@ -526,7 +543,7 @@ function ChatPageInner() {
       {/* Content */}
       <div className="flex-1 flex flex-col min-h-0">
         {hasContext ? (
-          <ChatView sessionId={sessionId} connectionId={connectionId} />
+          <ChatView sessionId={sessionId} connectionId={connectionId} ideaId={ideaId} />
         ) : (
           <div className="flex-1 px-4">
             <SessionList onSelect={(id) => router.push(`/chat?session=${id}`)} />

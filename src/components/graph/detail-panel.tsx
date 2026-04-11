@@ -4,13 +4,14 @@ import type { GraphNode } from "@/lib/graph/types";
 
 interface DetailPanelProps {
   node: GraphNode;
-  connectionId: string | null;
+  connections: { id: string; targetSummary: string }[];
   onDetail: () => void;
   onDeepDive: (connectionId: string) => void;
+  onDeepDiveSingle: () => void;
   onCombine: () => void;
 }
 
-export function DetailPanel({ node, connectionId, onDetail, onDeepDive, onCombine }: DetailPanelProps) {
+export function DetailPanel({ node, connections, onDetail, onDeepDive, onDeepDiveSingle, onCombine }: DetailPanelProps) {
   return (
     <div className="absolute left-4 right-4 rounded-xl p-3.5 animate-page-enter"
       style={{
@@ -43,13 +44,35 @@ export function DetailPanel({ node, connectionId, onDetail, onDeepDive, onCombin
               ))}
             </div>
           )}
-          <div className="flex items-center gap-4 mt-2.5">
+
+          {/* 深掘りボタン: 単体 + 接続別 */}
+          <div className="mt-2.5 -mx-1 overflow-x-auto scrollbar-hide">
+            <div className="flex gap-2 px-1">
+              {/* 単体深掘り（常に表示） */}
+              <button onClick={(e) => { e.stopPropagation(); onDeepDiveSingle(); }}
+                className="flex-shrink-0 text-left px-2.5 py-1.5 rounded-lg"
+                style={{ border: "0.5px solid var(--border)", maxWidth: 160 }}>
+                <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>このメモを</p>
+                <span className="text-[10px]" style={{ color: "var(--accent)" }}>深掘り →</span>
+              </button>
+              {/* 接続別深掘り */}
+              {connections.map((conn) => (
+                <button key={conn.id}
+                  onClick={(e) => { e.stopPropagation(); onDeepDive(conn.id); }}
+                  className="flex-shrink-0 text-left px-2.5 py-1.5 rounded-lg"
+                  style={{ border: "0.5px solid var(--border)", maxWidth: 160 }}>
+                  <p className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                    {conn.targetSummary.slice(0, 20)}{conn.targetSummary.length > 20 ? "…" : ""}
+                  </p>
+                  <span className="text-[10px]" style={{ color: "var(--accent)" }}>深掘り →</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 mt-2">
             <button onClick={(e) => { e.stopPropagation(); onDetail(); }}
               className="text-[11px]" style={{ color: "var(--accent)" }}>detail →</button>
-            {connectionId && (
-              <button onClick={(e) => { e.stopPropagation(); onDeepDive(connectionId); }}
-                className="text-[11px]" style={{ color: "var(--text-muted)" }}>deep dive</button>
-            )}
             <button onClick={(e) => { e.stopPropagation(); onCombine(); }}
               className="text-[11px]" style={{ color: "var(--text-muted)" }}>combine</button>
           </div>

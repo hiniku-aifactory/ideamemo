@@ -299,15 +299,22 @@ export default function GraphPage() {
     setCombineNodeA(null);
   }, []);
 
-  // ---- 接続ID取得 ----
-  const getConnectionId = useCallback((nodeId: string): string | null => {
-    if (!focusedNodeId) return null;
-    const conn = allConnections.find(
-      (c) => (c.idea_from_id === focusedNodeId && c.idea_to_id === nodeId) ||
-             (c.idea_from_id === nodeId && c.idea_to_id === focusedNodeId)
-    );
-    return conn?.id ?? null;
-  }, [allConnections, focusedNodeId]);
+  // ---- ノードの全接続取得 ----
+  const getNodeConnections = useCallback((nodeId: string) => {
+    return allConnections
+      .filter((c) => {
+        if (c.connection_type === "external_knowledge") return c.idea_from_id === nodeId;
+        return (c.idea_from_id === nodeId && c.idea_to_id) || c.idea_to_id === nodeId;
+      })
+      .map((c) => {
+        if (c.connection_type === "external_knowledge") {
+          return { id: c.id, targetSummary: c.external_knowledge_title ?? "外部知識" };
+        }
+        const targetId = c.idea_from_id === nodeId ? c.idea_to_id! : c.idea_from_id;
+        const targetIdea = allIdeas.find((i) => i.id === targetId);
+        return { id: c.id, targetSummary: targetIdea?.graph_label || targetIdea?.summary || "" };
+      });
+  }, [allConnections, allIdeas]);
 
   // ==== 主SVG描画（ノード/クラスタ/baseLinks確定後1回） ====
   useEffect(() => {
@@ -625,9 +632,10 @@ export default function GraphPage() {
       {selectedNode && !combineResult && !combineMode && (
         <DetailPanel
           node={selectedNode}
-          connectionId={!selectedNode.isKnowledge ? getConnectionId(selectedNode.id) : null}
+          connections={!selectedNode.isKnowledge ? getNodeConnections(selectedNode.id) : []}
           onDetail={() => { if (!selectedNode.isKnowledge) router.push(`/memo/${selectedNode.id}`); }}
           onDeepDive={(connId) => router.push(`/chat?connection=${connId}`)}
+          onDeepDiveSingle={() => router.push(`/chat?idea=${selectedNode.id}`)}
           onCombine={handleStartCombine}
         />
       )}
