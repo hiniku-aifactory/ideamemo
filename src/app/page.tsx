@@ -4,48 +4,60 @@ import { useAuth } from "@/components/auth-provider";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
-import type { Idea } from "@/lib/types";
+import { NodePreview } from "@/components/node-preview";
+import { pickHomeIdea } from "@/lib/home-picker";
+import { quotes } from "@/lib/quotes";
+import type { Idea, Connection } from "@/lib/types";
 
-const MEMO_LIMIT = 20;
-
-interface IdeaWithMeta extends Idea {
-  connection_count?: number;
+interface Quote {
+  text: string;
+  author: string;
+  ja?: string;
 }
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return "now";
-  if (min < 60) return `${min}m`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h`;
-  const d = Math.floor(hr / 24);
-  if (d < 7) return `${d}d`;
-  return new Date(dateStr).toLocaleDateString("ja-JP");
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (d < 1) return "today";
+  if (d === 1) return "1 day ago";
+  return `${d} days ago`;
+}
+
+function getDailyQuote(): Quote {
+  const dayOfYear = Math.floor(
+    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)
+  );
+  return (quotes as Quote[])[dayOfYear % quotes.length];
 }
 
 export default function HomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [ideas, setIdeas] = useState<IdeaWithMeta[]>([]);
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
   const [fetching, setFetching] = useState(true);
 
-  const fetchIdeas = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/ideas");
-      const data = await res.json();
-      setIdeas(data.ideas || []);
+      const [ideasRes, connRes] = await Promise.all([
+        fetch("/api/ideas"),
+        fetch("/api/connections"),
+      ]);
+      const ideasData = await ideasRes.json();
+      const connData = connRes.ok ? await connRes.json() : { connections: [] };
+      setIdeas(ideasData.ideas || []);
+      setConnections(connData.connections || []);
     } catch (err) {
-      console.error("Failed to fetch ideas:", err);
+      console.error("Failed to fetch:", err);
     } finally {
       setFetching(false);
     }
   }, []);
 
   useEffect(() => {
-    if (user) fetchIdeas();
+    if (user) fetchData();
     else setFetching(false);
-  }, [user, fetchIdeas]);
+  }, [user, fetchData]);
 
   if (loading) {
     return (
@@ -63,14 +75,14 @@ export default function HomePage() {
     return null;
   }
 
+  const pick = !fetching ? pickHomeIdea(ideas, connections) : null;
+  const quote = getDailyQuote();
+
   return (
     <main className="flex flex-col min-h-dvh animate-page-enter">
-      <AppHeader
-        title={`${ideas.length} memos`}
-      />
+      <AppHeader title={`${ideas.length} memos`} />
 
-      {/* Content */}
-      <div className="flex-1 px-5 pb-28">
+      <div className="flex-1 flex flex-col items-center px-5 pb-28" style={{ paddingTop: "6vh" }}>
         {fetching ? (
           <div className="flex justify-center pt-20">
             <div
@@ -78,9 +90,45 @@ export default function HomePage() {
               style={{ borderColor: "var(--border)", borderTopColor: "transparent" }}
             />
           </div>
-        ) : ideas.length === 0 ? (
-          /* エンプティステート */
-          <div className="flex flex-col items-center" style={{ paddingTop: "25vh" }}>
+        ) : pick ? (
+          <>
+            {/* ノードプレビュー */}
+            <button
+              className="w-full max-w-xs"
+              onClick={() => router.push(`/memo/${pick.idea.id}`)}
+              aria-label={pick.idea.summary}
+            >
+              <NodePreview idea={pick.idea} connections={pick.connections} />
+            </button>
+
+            {/* サマリー */}
+            <p
+              className="mt-4 text-[16px] w-full max-w-xs"
+              style={{ color: "var(--text-primary)", lineHeight: 1.6 }}
+            >
+              {pick.idea.summary}
+            </p>
+
+            {/* メタ情報 */}
+            <p
+              className="mt-2 text-[11px] w-full max-w-xs"
+              style={{
+                color: "var(--text-muted)",
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+              }}
+            >
+              {pick.connections.length} connections · {timeAgo(pick.idea.created_at)}
+            </p>
+
+            {/* 区切り線 */}
+            <div
+              className="mt-6 w-full max-w-xs"
+              style={{ borderTop: "0.5px solid var(--border-light)" }}
+            />
+          </>
+        ) : (
+          <>
+            {/* エンプティステート */}
             <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
               <circle cx="40" cy="40" r="38" stroke="#E0E0E0" strokeWidth="0.5" />
               <circle cx="40" cy="40" r="24" stroke="#E0E0E0" strokeWidth="0.5" />
@@ -97,74 +145,48 @@ export default function HomePage() {
             >
               0 nodes
             </span>
-          </div>
-        ) : (
-          /* メモ一覧 */
-          <div>
-            {ideas.map((idea, idx) => (
-              <button
-                key={idea.id}
-                onClick={() => router.push(`/memo/${idea.id}`)}
-                className="w-full text-left py-3"
-                style={{
-                  borderBottom: idx < ideas.length - 1 ? "0.5px solid var(--border-light)" : "none",
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="text-[14px] font-semibold leading-snug truncate"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {idea.summary}
-                    </p>
-                    <span
-                      className="text-[11px] mt-1 block"
-                      style={{
-                        color: "var(--text-muted)",
-                        fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                      }}
-                    >
-                      {timeAgo(idea.created_at)}
-                    </span>
-                  </div>
-                  {/* 外部知識数ドット */}
-                  {(idea.connection_count ?? 0) > 0 && (
-                    <div className="flex gap-0.5 mt-1 flex-shrink-0">
-                      {Array.from({ length: idea.connection_count ?? 0 }).map((_, i) => (
-                        <div
-                          key={i}
-                          className="rounded-full"
-                          style={{
-                            width: "5px",
-                            height: "5px",
-                            background: "var(--border)",
-                          }}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
 
-      {/* メモ数表示 */}
-      {ideas.length > 0 && (
-        <div className="text-center pb-28">
-          <span
-            className="text-[10px]"
-            style={{
-              color: "var(--text-muted)",
-              fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-            }}
+            {/* 区切り線 */}
+            <div
+              className="mt-8 w-full max-w-xs"
+              style={{ borderTop: "0.5px solid var(--border-light)" }}
+            />
+          </>
+        )}
+
+        {/* 偉人の言葉 */}
+        <div className="mt-6 w-full max-w-xs">
+          {quote.ja ? (
+            <>
+              <p
+                className="text-[13px] italic"
+                style={{ color: "var(--text-secondary)", lineHeight: 1.8 }}
+              >
+                {`"${quote.ja}"`}
+              </p>
+              <p
+                className="mt-1 text-[11px] italic"
+                style={{ color: "var(--text-muted)", lineHeight: 1.6 }}
+              >
+                {`"${quote.text}"`}
+              </p>
+            </>
+          ) : (
+            <p
+              className="text-[13px] italic"
+              style={{ color: "var(--text-secondary)", lineHeight: 1.8 }}
+            >
+              {`"${quote.text}"`}
+            </p>
+          )}
+          <p
+            className="mt-2 text-[12px] text-right"
+            style={{ color: "var(--text-muted)" }}
           >
-            {ideas.length}/{MEMO_LIMIT}
-          </span>
+            — {quote.author}
+          </p>
         </div>
-      )}
+      </div>
     </main>
   );
 }
