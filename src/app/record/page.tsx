@@ -8,6 +8,7 @@ import { WaveformBars } from "@/components/waveform-bars";
 import { KnowledgeCard, LatentQuestionHeader } from "@/components/knowledge-card";
 import { LimitModal } from "@/components/limit-modal";
 import { mockDb } from "@/lib/mock/db";
+import { quotes } from "@/lib/quotes";
 
 type Phase = "idle" | "recording" | "processing" | "transcription" | "structured" | "connection" | "done" | "error";
 
@@ -44,6 +45,8 @@ export default function RecordPage() {
   const [showConnectionCount, setShowConnectionCount] = useState(0);
   const [micError, setMicError] = useState<string | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
+
+  const [randomQuote] = useState(() => quotes[Math.floor(Math.random() * quotes.length)]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -248,95 +251,106 @@ export default function RecordPage() {
       {/* 処理結果エリア */}
       {isProcessing && (
         <div className="flex-1 overflow-y-auto px-5 pb-4 space-y-5">
-          {/* 文字起こし: ラベルなし、テキストのみ */}
+          {/* Phase 1: 文字起こし */}
           {result.transcript && (
             <section className="animate-page-enter">
-              <p
-                className="text-[13px] leading-relaxed"
-                style={{ color: "var(--text-primary)", lineHeight: 1.8 }}
-              >
+              <p className="text-[13px] leading-relaxed"
+                style={{ color: "var(--text-primary)", lineHeight: 1.8 }}>
                 {result.transcript}
               </p>
             </section>
           )}
 
-          {/* 構造化 */}
+          {/* ↓矢印（具体→抽象の変換表示） */}
+          {result.transcript && result.structured && (
+            <div className="flex justify-center animate-page-enter">
+              <svg width="20" height="32" viewBox="0 0 20 32" fill="none">
+                <path d="M10 2 L10 24 M4 18 L10 24 L16 18"
+                  stroke="var(--text-hint)" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+          )}
+
+          {/* Phase 2: 構造化（抽象原則を強調） */}
           {result.structured && (
             <section className="animate-page-enter">
-              <p
-                className="text-[15px] font-semibold"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <p className="text-[15px] font-semibold"
+                style={{ color: "var(--text-primary)" }}>
                 {result.structured.summary}
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {result.structured.keywords.map((kw) => (
-                  <span
-                    key={kw}
-                    className="text-[10px] px-2 py-0.5 rounded"
-                    style={{
-                      border: "0.5px solid var(--border)",
-                      color: "var(--text-muted)",
-                    }}
-                  >
+                  <span key={kw} className="text-[10px] px-2 py-0.5 rounded"
+                    style={{ border: "0.5px solid var(--border)", color: "var(--text-muted)" }}>
                     {kw}
                   </span>
                 ))}
               </div>
               {result.structured.abstract_principle && (
-                <p
-                  className="mt-2 text-[13px] italic"
-                  style={{ color: "var(--text-secondary)" }}
-                >
+                <p className="mt-3 text-[14px] font-medium"
+                  style={{ color: "var(--text-primary)" }}>
                   {result.structured.abstract_principle}
                 </p>
               )}
             </section>
           )}
 
-          {/* latent_question + 外部知識カード */}
+          {/* Phase 3: 名言ローディング（接続検索中） */}
+          {result.structured && phase !== "done" && phase !== "error" && showConnectionCount === 0 && (
+            <section className="animate-page-enter text-center py-6">
+              <p className="text-[13px] italic"
+                style={{ color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                &ldquo;{randomQuote.ja || randomQuote.text}&rdquo;
+              </p>
+              <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
+                — {randomQuote.author}
+              </p>
+              <div className="flex justify-center gap-1 mt-4">
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+                  style={{ background: "var(--text-muted)" }} />
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+                  style={{ background: "var(--text-muted)", animationDelay: "0.2s" }} />
+                <span className="w-1.5 h-1.5 rounded-full animate-pulse"
+                  style={{ background: "var(--text-muted)", animationDelay: "0.4s" }} />
+              </div>
+              <p className="text-[10px] mt-2"
+                style={{ color: "var(--text-hint)", fontFamily: "var(--font-mono)" }}>
+                同じ構造を探しています
+              </p>
+            </section>
+          )}
+
+          {/* Phase 4: 接続カード（順次フェードイン） */}
           {showConnectionCount > 0 && (
-            <section className="animate-page-enter">
+            <section>
               {result.structured?.latent_question && (
                 <LatentQuestionHeader question={result.structured.latent_question} />
               )}
               {connections.slice(0, showConnectionCount).map((conn, i) => (
-                <KnowledgeCard
-                  key={i}
-                  title={conn.title}
-                  description={conn.description}
-                  sourceUrl={conn.source_url}
-                  sourceTitle={conn.source_title}
-                  bookmarked={conn.bookmarked ?? false}
-                  onBookmark={() => {
-                    if (conn.id) {
-                      fetch(`/api/connections/${conn.id}/bookmark`, { method: "POST" });
-                    }
-                  }}
-                />
+                <div key={i} className="animate-page-enter"
+                  style={{ animationDelay: `${i * 400}ms`, animationFillMode: "backwards" }}>
+                  <KnowledgeCard
+                    title={conn.title}
+                    description={conn.description}
+                    sourceUrl={conn.source_url}
+                    sourceTitle={conn.source_title}
+                    bookmarked={conn.bookmarked ?? false}
+                    onBookmark={() => {
+                      if (conn.id) {
+                        fetch(`/api/connections/${conn.id}/bookmark`, { method: "POST" });
+                      }
+                    }}
+                  />
+                </div>
               ))}
             </section>
           )}
 
-          {/* 処理中インジケーター */}
-          {phase !== "done" && phase !== "error" && (
-            <div className="flex items-center gap-2">
-              <div
-                className="h-3 w-3 rounded-full border border-t-transparent animate-spin"
-                style={{ borderColor: "var(--border)", borderTopColor: "transparent" }}
-              />
-              <span
-                className="text-[11px]"
-                style={{
-                  color: "var(--text-muted)",
-                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                }}
-              >
-                {phase === "processing" && "transcribing"}
-                {phase === "transcription" && "structuring"}
-                {phase === "structured" && "searching"}
-                {phase === "connection" && "searching"}
-              </span>
+          {/* 完了 */}
+          {phase === "done" && (
+            <div className="text-center pt-2">
+              <span className="text-[10px]"
+                style={{ color: "var(--text-hint)", fontFamily: "var(--font-mono)" }}>done</span>
             </div>
           )}
 
@@ -363,21 +377,6 @@ export default function RecordPage() {
                   再試行
                 </button>
               )}
-            </div>
-          )}
-
-          {/* 完了: ← で戻る（ボタン不要、ヘッダーの戻るで対応） */}
-          {phase === "done" && (
-            <div className="text-center pt-2">
-              <span
-                className="text-[10px]"
-                style={{
-                  color: "var(--text-hint)",
-                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
-                }}
-              >
-                done
-              </span>
             </div>
           )}
         </div>
