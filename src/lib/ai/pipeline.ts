@@ -257,22 +257,12 @@ Generate ONE English search query (4-8 words).`,
   // Gemini Grounding検索
   const { text: groundingText, sources } = await groundingSearchWithText(searchQuery);
 
-  // 検索結果が空の場合は合成をスキップ
-  if (sources.length === 0 && !groundingText.trim()) {
-    return {
-      title: "",
-      description: "",
-      source_url: null,
-      source_title: null,
-      quality_score: 0.1,
-      search_domain: domain,
-    };
-  }
-
   const searchResultsText =
     sources.length > 0
       ? sources.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}`).join("\n\n")
-      : `[検索テキスト]\n${groundingText.slice(0, 500)}`;
+      : groundingText.trim()
+        ? `[検索テキスト]\n${groundingText.slice(0, 500)}`
+        : `[検索結果なし — あなたの知識から、このドメインでこの構造が現れる具体的な事実を1つ挙げてください。source_urlはnullにしてください]`;
 
   // プロンプト②: 接続合成
   const synthRes = await anthropic.messages.create({
