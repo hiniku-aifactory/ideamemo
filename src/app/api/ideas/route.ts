@@ -89,9 +89,8 @@ export async function POST(request: NextRequest) {
           created_at: now,
         };
 
-        if (MOCK_MODE) {
-          mockDb.ideas.insert(idea);
-        }
+        // Supabase未接続のためモード問わずmockDbに保存
+        mockDb.ideas.insert(idea);
 
         // 5. 接続発見（3件をSSE送信）
         const primaryPersona = personas[0] ?? "builder";
@@ -170,6 +169,9 @@ export async function POST(request: NextRequest) {
               bookmarked: false,
               created_at: now,
             };
+
+            // Supabase未接続のためモード問わずmockDbに保存
+            mockDb.connections.insert(conn);
 
             send("connection", {
               id: conn.id,
