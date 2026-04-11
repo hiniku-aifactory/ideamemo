@@ -126,7 +126,7 @@ export async function structure(transcript: string): Promise<Structured> {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 500,
     system: STRUCTURE_SYSTEM_PROMPT,
     messages: [{ role: "user", content: `以下の音声メモを構造化してください。\n\n${transcript}` }],

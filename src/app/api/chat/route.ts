@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
                 const { default: Anthropic } = await import("@anthropic-ai/sdk");
                 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
                 const initRes = await anthropic.messages.create({
-                  model: "claude-sonnet-4-20250514",
+                  model: "claude-sonnet-4-6",
                   max_tokens: 400,
                   system: INITIAL_MESSAGE_SYSTEM,
                   messages: [
@@ -298,7 +298,7 @@ export async function POST(request: NextRequest) {
 
               // ストリーミング
               const stream = anthropic.messages.stream({
-                model: "claude-sonnet-4-20250514",
+                model: "claude-sonnet-4-6",
                 max_tokens: 800,
                 system: systemPrompt,
                 messages: history,

@@ -163,7 +163,7 @@ ${persona.promptInstruction}${profileSection}${fbSection}`;
 
   // プロンプト⓪: ドメイン選択
   const domainRes = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 300,
     system: DOMAIN_SELECTION_SYSTEM,
     messages: [
@@ -209,7 +209,7 @@ Output JSON only:
       }> => {
         // プロンプト①: クエリ生成
         const queryRes = await anthropic.messages.create({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 100,
           system: QUERY_GEN_SYSTEM,
           messages: [
@@ -248,7 +248,7 @@ Bad: "Netflix recommendation algorithm" (everyone knows this)`,
 
         // プロンプト②: 接続合成
         const synthRes = await anthropic.messages.create({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6",
           max_tokens: 500,
           system: synthesisSystem,
           messages: [
