@@ -127,6 +127,41 @@ export function KnowledgeCard({ title, description, sourceUrl, sourceTitle, book
   );
 }
 
+// スケルトンカード — 接続検索中の1枚分
+export function KnowledgeCardSkeleton({ index = 0 }: { index?: number }) {
+  return (
+    <div
+      className="flex gap-3"
+      style={{
+        opacity: 0,
+        animation: `fadeSlideIn 0.4s ease-out ${index * 150}ms forwards`,
+      }}
+    >
+      <div className="flex flex-col items-center pt-1.5">
+        <div
+          className="rounded-full flex-shrink-0 animate-pulse"
+          style={{ width: 5, height: 5, background: "var(--border)" }}
+        />
+        <div className="flex-1 mt-1" style={{ width: "0.5px", background: "var(--border)" }} />
+      </div>
+      <div className="flex-1 pb-4 min-w-0 space-y-2.5">
+        <div className="animate-pulse rounded" style={{ width: "55%", height: 14, background: "var(--bg-tertiary)" }} />
+        <div className="space-y-1.5">
+          <div className="animate-pulse rounded" style={{ width: "90%", height: 12, background: "var(--bg-tertiary)", animationDelay: "0.1s" }} />
+          <div className="animate-pulse rounded" style={{ width: "75%", height: 12, background: "var(--bg-tertiary)", animationDelay: "0.2s" }} />
+        </div>
+        <div className="animate-pulse rounded" style={{ width: "30%", height: 10, background: "var(--bg-tertiary)", animationDelay: "0.3s" }} />
+      </div>
+      <style>{`
+        @keyframes fadeSlideIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 // latent_questionヘッダー
 export function LatentQuestionHeader({ question }: { question: string }) {
   return (

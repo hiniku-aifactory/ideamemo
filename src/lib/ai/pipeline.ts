@@ -280,7 +280,7 @@ export async function generateSingleConnection(
   if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not set");
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const { groundingSearchWithText } = await import("./gemini");
+  const { search } = await import("@/lib/search");
   const persona = PERSONA_MAP[input.personaId];
 
   const profileSection =
@@ -320,21 +320,23 @@ Generate ONE English search query (4-8 words).${retried ? "\n\nRETRY: Your previ
 
   const searchQuery = (queryRes.content[0] as { type: string; text: string }).text.trim();
 
-  // Gemini Grounding検索
-  const { text: groundingText, sources } = await groundingSearchWithText(searchQuery);
+  // 統合検索（Brave → Geminiフォールバック）
+  const searchResponse = await search(searchQuery, 5);
 
-  // groundingTextは常に合成に渡す（sourcesがあってもタイトル+URLだけでは情報不足）
+  // 検索結果をプロンプト用テキストに変換
   let searchResultsText: string;
-  if (sources.length > 0 && groundingText.trim()) {
-    // ソースあり＋テキストあり: 両方渡す（テキストが事実の主軸、ソースは出典）
-    const sourcesBlock = sources.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}`).join("\n");
-    searchResultsText = `[検索テキスト]\n${groundingText.slice(0, 800)}\n\n[出典]\n${sourcesBlock}`;
-  } else if (groundingText.trim()) {
-    // テキストのみ（ソースなし）
-    searchResultsText = `[検索テキスト]\n${groundingText.slice(0, 800)}`;
-  } else if (sources.length > 0) {
-    // ソースのみ（テキストなし — まれ）
-    searchResultsText = sources.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}`).join("\n\n");
+  if (searchResponse.results.length > 0) {
+    const resultsBlock = searchResponse.results
+      .map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}\nURL: ${r.url}`)
+      .join("\n\n");
+    // Geminiフォールバック時はgroundingTextも追加
+    if (searchResponse.groundingText.trim()) {
+      searchResultsText = `[検索テキスト]\n${searchResponse.groundingText.slice(0, 800)}\n\n[出典]\n${resultsBlock}`;
+    } else {
+      searchResultsText = resultsBlock;
+    }
+  } else if (searchResponse.groundingText.trim()) {
+    searchResultsText = `[検索テキスト]\n${searchResponse.groundingText.slice(0, 800)}`;
   } else {
     searchResultsText = `[検索結果なし — あなたの知識から、このドメインでこの構造が現れる具体的な事実を1つ挙げてください。source_urlはnullにしてください]`;
   }
@@ -378,7 +380,7 @@ ${searchResultsText}
 
   const synthText = (synthRes.content[0] as { type: string; text: string }).text.trim();
   const parsed = JSON.parse(extractJSON(synthText)) as Record<string, unknown>;
-  const firstSource = sources[0];
+  const firstSource = searchResponse.results[0];
   const quality = calcQualityScore(
     {
       title: (parsed.title as string) ?? "",

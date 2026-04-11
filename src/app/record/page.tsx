@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { useRecording } from "@/components/recording-context";
 import { WaveformBars } from "@/components/waveform-bars";
-import { KnowledgeCard, LatentQuestionHeader } from "@/components/knowledge-card";
+import { KnowledgeCard, KnowledgeCardSkeleton, LatentQuestionHeader } from "@/components/knowledge-card";
 import { LimitModal } from "@/components/limit-modal";
 import { mockDb } from "@/lib/mock/db";
 import { quotes } from "@/lib/quotes";
@@ -327,57 +327,60 @@ export default function RecordPage() {
             </section>
           )}
 
-          {/* Phase 3: 名言ローディング（接続検索中） */}
-          {result.structured && phase !== "done" && phase !== "error" && showConnectionCount === 0 && (
-            <section className="animate-page-enter text-center py-6">
-              <p className="text-[13px] italic"
-                style={{ color: "var(--text-secondary)", lineHeight: 1.8 }}>
-                &ldquo;{currentQuote.ja || currentQuote.text}&rdquo;
-              </p>
-              <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
-                — {currentQuote.author}
-              </p>
-              <div className="flex justify-center gap-1 mt-4">
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-                  style={{ background: "var(--text-muted)" }} />
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-                  style={{ background: "var(--text-muted)", animationDelay: "0.2s" }} />
-                <span className="w-1.5 h-1.5 rounded-full animate-pulse"
-                  style={{ background: "var(--text-muted)", animationDelay: "0.4s" }} />
-              </div>
-              <p className="text-[10px] mt-2"
-                style={{ color: "var(--text-hint)", fontFamily: "var(--font-mono)" }}>
-                同じ構造を探しています
-              </p>
-            </section>
-          )}
-
-          {/* Phase 4: 接続カード（順次フェードイン） */}
-          {showConnectionCount > 0 && (
+          {/* Phase 3+4: 接続カード（スケルトン → 実カード差し替え） */}
+          {result.structured && phase !== "error" && (
             <section>
-              {result.structured?.latent_question && (
+              {result.structured?.latent_question && showConnectionCount > 0 && (
                 <LatentQuestionHeader question={result.structured.latent_question} />
               )}
-              {connections.slice(0, showConnectionCount).map((conn, i) => (
-                <div key={i} className="animate-page-enter"
-                  style={{ animationDelay: `${i * 400}ms`, animationFillMode: "backwards" }}>
-                  <KnowledgeCard
-                    title={conn.title}
-                    description={conn.description}
-                    sourceUrl={conn.source_url}
-                    sourceTitle={conn.source_title}
-                    bookmarked={conn.bookmarked ?? false}
-                    onBookmark={() => {
-                      if (conn.id) {
-                        fetch(`/api/connections/${conn.id}/bookmark`, { method: "POST" });
-                      }
-                    }}
-                    connectionId={conn.id}
-                    onDeepDive={handleDeepDive}
-                    isExternalKnowledge={conn.connection_type === "external_knowledge"}
-                  />
+
+              {/* 名言（カードが0枚の間だけ表示） */}
+              {phase !== "done" && showConnectionCount === 0 && (
+                <div className="text-center py-3 animate-page-enter">
+                  <p className="text-[13px] italic"
+                    style={{ color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                    &ldquo;{currentQuote.ja || currentQuote.text}&rdquo;
+                  </p>
+                  <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
+                    — {currentQuote.author}
+                  </p>
                 </div>
-              ))}
+              )}
+
+              {/* 3枠: 実カード or スケルトン */}
+              {Array.from({ length: 3 }).map((_, i) => {
+                const conn = connections[i];
+                const isRevealed = i < showConnectionCount && conn;
+                const isLoading = !isRevealed && phase !== "done";
+
+                if (isRevealed && conn) {
+                  return (
+                    <div key={`card-${i}`} className="animate-page-enter">
+                      <KnowledgeCard
+                        title={conn.title}
+                        description={conn.description}
+                        sourceUrl={conn.source_url}
+                        sourceTitle={conn.source_title}
+                        bookmarked={conn.bookmarked ?? false}
+                        onBookmark={() => {
+                          if (conn.id) {
+                            fetch(`/api/connections/${conn.id}/bookmark`, { method: "POST" });
+                          }
+                        }}
+                        connectionId={conn.id}
+                        onDeepDive={handleDeepDive}
+                        isExternalKnowledge={conn.connection_type === "external_knowledge"}
+                      />
+                    </div>
+                  );
+                }
+
+                if (isLoading) {
+                  return <KnowledgeCardSkeleton key={`skel-${i}`} index={i} />;
+                }
+
+                return null;
+              })}
             </section>
           )}
 
