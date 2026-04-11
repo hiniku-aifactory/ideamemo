@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  // Mock mode: skip all auth checks
-  if (process.env.NEXT_PUBLIC_MOCK_MODE === "true") {
+  // Mock mode or Supabase未設定: skip all auth checks
+  if (process.env.NEXT_PUBLIC_MOCK_MODE === "true" || !process.env.NEXT_PUBLIC_SUPABASE_URL) {
     return NextResponse.next();
   }
 
