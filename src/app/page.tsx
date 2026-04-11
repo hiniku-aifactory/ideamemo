@@ -95,7 +95,7 @@ export default function HomePage() {
             {/* ノードプレビュー */}
             <button
               className="w-full max-w-xs"
-              onClick={() => router.push(`/memo/${pick.idea.id}`)}
+              onClick={() => router.push(`/graph/explore?root=${pick.idea.id}`)}
               aria-label={pick.idea.summary}
             >
               <NodePreview idea={pick.idea} connections={pick.connections} />
