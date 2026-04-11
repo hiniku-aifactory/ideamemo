@@ -66,7 +66,7 @@ Bad examples:
 - description: 2-3文。以下の流れで書く
   - まず事実を1つ。数字か具体例を入れる
   - 次に、ユーザーの気づきと同じ構造であることを示す。ただし「構造」という言葉は使わない。「〜でも同じことが起きてる」「〜と似てる」くらいの軽さで
-- 禁止ワード: 「〜してみてください」「〜かもしれません」「構造的に」「原理」「メカニズム」「示唆する」「提唱した」
+- 禁止ワード: 「〜してみてください」「〜かもしれません」「構造的に」「原理」「メカニズム」「示唆する」「提唱した」「研究によると」「実験がある」「論文で」
 - 断定調で書くが、学術調にはしない
 - 友達に「知ってる？」って話す時のトーンで
 
@@ -112,46 +112,88 @@ ${searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.description}\nURL: ${r
 
 ---
 
-## SEARCH_ANGLES v3
+## SEARCH_ANGLES v4（新規性バランス: 2/3ニッチ + 1/3ギリOK）
+
+**設計意図:** 3枚の接続カードのうち2枚は「初めて聞いた」事例、1枚は「知ってるかもしれないけど自分の体験と繋がると刺さる」事例。心理系は後者（既知でもOK）、仕組み・異分野は前者（ニッチ必須）。
 
 ```typescript
 export const SEARCH_ANGLES = {
   business_model: {
     label: "仕組みの視点",
     searchBias: "business service product design system",
+    novelty: "niche_required" as const,
     queryGuide: `Find a product, service, or everyday system where the same structure appears.
-Examples: subscription models, store layouts, pricing tricks, delivery systems.
-The example must be something a regular person encounters while shopping, eating, or commuting.`,
+The example must be something a regular person encounters while shopping, eating, or commuting.
+
+NICHE REQUIRED — your query must include:
+- A specific person's job title (wedding DJ, barista, train conductor)
+- OR a specific company/store/brand name
+- OR a specific city or place name
+The user should say "I've never heard of that" when they see the result.
+
+BANNED: Famous examples that educated people already know.
+No TED Talk staples, no pop-science book examples (Gladwell, Kahneman, Ariely),
+no viral internet examples (Twitter 140 chars, Netflix recommendation algorithm).
+"wedding DJ 6000 events dance floor deadlock" → GOOD (niche, specific)
+"subscription model Netflix retention" → BAD (everyone knows Netflix)`,
   },
   psychology: {
     label: "人の心の視点",
     searchBias: "psychology behavior habit human tendency",
+    novelty: "familiar_ok" as const,
     queryGuide: `Find a common human behavior or habit that follows the same pattern.
-Examples: why people clap together, why bestseller lists work, why uniforms change behavior.
-Prefer EPISODES over THEORY NAMES. "people do X" not "the X effect."`,
+Prefer EPISODES over THEORY NAMES. "people do X" not "the X effect."
+
+FAMILIAR OK — well-known examples are acceptable IF:
+- They connect to the user's memo in a way the user hasn't considered
+- They are described through a specific episode, not the theory name
+Even so, prefer lesser-known examples when available.
+
+STILL BANNED: Direct theory names as titles.
+"the jam experiment" → BAD (theory name as title)
+"スーパーでジャムを6種類にしたら売上10倍" → ACCEPTABLE (episode framing)
+"why nobody claps first at concerts" → ACCEPTABLE (episode framing)`,
   },
   cross_domain: {
     label: "異分野の視点",
-    searchBias: "surprising fact everyday correlation",
+    searchBias: "surprising fact everyday correlation niche",
+    novelty: "niche_required" as const,
     queryGuide: `Find a surprising everyday fact from a completely different area of life.
 Areas: food, fashion, music, sports, housing, travel, books, movies, nature.
-The key test: can a regular person picture this in their own life?
-"wine labels predict taste" → yes. "peacock tail handicap principle" → no.`,
+
+NICHE REQUIRED — same rules as business_model:
+- Include a specific proper noun (person, place, brand, event)
+- The user should say "I've never heard of that"
+- Prefer practitioner stories (chef, architect, coach) over academic research
+
+"Anthony Bourdain restaurant bathroom quality judge" → GOOD
+"wine label design correlates taste quality" → BAD (too generic, no specific source)
+"Draeger's Market Menlo Park jam display sales" → GOOD (specific store, specific place)`,
   },
 } as const;
 ```
 
 ---
 
-## quality_score ルールベース算出（v2から変更なし）
+## quality_score v2（有名度ペナルティ + 学術調ペナルティ追加）
 
 ```typescript
-function calcQualityScore(result: {
-  title: string;
-  description: string;
-  source_url: string | null;
-  low_quality?: boolean;
-}): number {
+const FAMOUS_PATTERNS = [
+  /marshmallow\s*test/i, /jam\s*experiment/i, /stanford\s*prison/i,
+  /milgram/i, /pavlov/i, /10[,.]?000\s*hours?/i, /power\s*pos[ei]/i,
+  /twitter.{0,10}140/i, /paradox\s*of\s*choice/i, /broken\s*window/i,
+  /dunbar.{0,5}number/i, /anchoring\s*(effect|bias)/i, /nudge\s*theory/i,
+  /kahneman/i, /gladwell/i, /ariely/i,
+];
+
+const ACADEMIC_PATTERNS = [
+  /研究によると/, /実験がある/, /論文で/, /提唱した/, /示唆する/, /メカニズム/,
+];
+
+function calcQualityScore(
+  result: { title: string; description: string; source_url: string | null; low_quality?: boolean },
+  noveltyLevel: "niche_required" | "familiar_ok"
+): number {
   if (result.low_quality) return 0.2;
 
   let score = 0.5;
@@ -160,8 +202,19 @@ function calcQualityScore(result: {
   if (result.source_url) score += 0.1;
   if (result.description.length >= 50) score += 0.1;
 
-  return Math.min(score, 1.0);
+  const text = `${result.title} ${result.description}`;
+  const isFamous = FAMOUS_PATTERNS.some(p => p.test(text));
+  if (isFamous) {
+    score -= noveltyLevel === "niche_required" ? 0.4 : 0.1;
+  }
+
+  const isAcademic = ACADEMIC_PATTERNS.some(p => p.test(result.description));
+  if (isAcademic) score -= 0.15;
+
+  return Math.max(Math.min(score, 1.0), 0.1);
 }
+
+// score < 0.5 → クエリ再生成+再検索（最大1回リトライ）
 ```
 
 ---
