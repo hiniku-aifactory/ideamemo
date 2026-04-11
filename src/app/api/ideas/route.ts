@@ -166,6 +166,13 @@ export async function POST(request: NextRequest) {
             domains.map(async ({ domain, novelty }) => {
               try {
                 const result = await generateSingleConnection(pipelineInput, domain, novelty);
+
+                // 空の接続（合成失敗/low_quality）はスキップ
+                if (!result.title || !result.description) {
+                  console.warn(`[A01] Empty connection for domain ${domain}, skipping`);
+                  return;
+                }
+
                 const conn: Connection = {
                   id: crypto.randomUUID(),
                   idea_from_id: ideaId,

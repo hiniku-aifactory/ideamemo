@@ -256,6 +256,19 @@ Generate ONE English search query (4-8 words).`,
 
   // Gemini Grounding検索
   const { text: groundingText, sources } = await groundingSearchWithText(searchQuery);
+
+  // 検索結果が空の場合は合成をスキップ
+  if (sources.length === 0 && !groundingText.trim()) {
+    return {
+      title: "",
+      description: "",
+      source_url: null,
+      source_title: null,
+      quality_score: 0.1,
+      search_domain: domain,
+    };
+  }
+
   const searchResultsText =
     sources.length > 0
       ? sources.map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.url}`).join("\n\n")
