@@ -23,10 +23,14 @@ export function DetailPanel({ node, connections, onDetail, onDeepDive, onDeepDiv
         <>
           <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>{node.knowledgeTitle}</p>
           <p className="text-[11px] mt-1" style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>{node.knowledgeDescription}</p>
-          {node.knowledgeUrl && (
-            <a href={node.knowledgeUrl} target="_blank" rel="noopener noreferrer"
-              className="text-[11px] mt-2 inline-block" style={{ color: "var(--accent)" }}>source ↗</a>
-          )}
+          <div className="flex items-center gap-4 mt-2">
+            {node.knowledgeUrl && (
+              <a href={node.knowledgeUrl} target="_blank" rel="noopener noreferrer"
+                className="text-[11px]" style={{ color: "var(--accent)" }}>source ↗</a>
+            )}
+            <button onClick={(e) => { e.stopPropagation(); onDeepDive(node.id.slice(2)); }}
+              className="text-[11px]" style={{ color: "var(--accent)" }}>深掘り →</button>
+          </div>
         </>
       ) : (
         <>
