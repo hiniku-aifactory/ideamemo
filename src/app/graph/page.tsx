@@ -6,20 +6,15 @@ import * as d3 from "d3";
 import { AppHeader } from "@/components/app-header";
 import { DetailPanel } from "@/components/graph/detail-panel";
 import { CombinePanel } from "@/components/graph/combine-panel";
-import { Breadcrumb } from "@/components/graph/breadcrumb";
 import { mockDb } from "@/lib/mock/db";
 import type { Idea, Connection } from "@/lib/types";
 import type { GraphNode, GraphLink, TagCluster } from "@/lib/graph/types";
 import {
   layoutTagClusters,
-  layoutSatellites,
-  layoutWithCollisionAvoidance,
+  layoutNodesInCluster,
+  layoutKnowledge,
   calcNodeRadius,
-  IDEA_DISTANCE,
-  KNOWLEDGE_DISTANCE,
 } from "@/lib/graph/layout";
-
-type ViewLevel = "tags" | "nodes" | "explore";
 
 export default function GraphPage() {
   const router = useRouter();
@@ -30,30 +25,28 @@ export default function GraphPage() {
   // データ
   const [allIdeas, setAllIdeas] = useState<Idea[]>([]);
   const [allConnections, setAllConnections] = useState<Connection[]>([]);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // ビューレベル
-  const [viewLevel, setViewLevel] = useState<ViewLevel>("tags");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [centerNodeId, setCenterNodeId] = useState<string | null>(null);
-  const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set());
+  // 固定グラフ要素（初期計算後は変わらない）
+  const [nodes, setNodes] = useState<GraphNode[]>([]);
+  const [clusters, setClusters] = useState<TagCluster[]>([]);
+  const [baseLinks, setBaseLinks] = useState<GraphLink[]>([]);
 
-  // グラフ要素
-  const [tagClusters, setTagClusters] = useState<TagCluster[]>([]);
-  const [visibleNodes, setVisibleNodes] = useState<GraphNode[]>([]);
-  const [visibleLinks, setVisibleLinks] = useState<GraphLink[]>([]);
+  // フォーカス状態（1ノードのみ。null = 非フォーカス）
+  const [focusedNodeId, setFocusedNodeId] = useState<string | null>(null);
+  const [knowledgeNodes, setKnowledgeNodes] = useState<GraphNode[]>([]);
+  const [knowledgeLinks, setKnowledgeLinks] = useState<GraphLink[]>([]);
 
   // UI状態
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [combineMode, setCombineMode] = useState(false);
   const [combineNodeA, setCombineNodeA] = useState<GraphNode | null>(null);
   const [combineResult, setCombineResult] = useState<{
-    connection: Connection; ideaA: { summary: string }; ideaB: { summary: string };
+    connection: Connection;
+    ideaA: { summary: string };
+    ideaB: { summary: string };
   } | null>(null);
   const [combineLoading, setCombineLoading] = useState(false);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-
-  // パンくず
-  const [breadcrumb, setBreadcrumb] = useState<string[]>([]);
 
   // ---- データ読み込み ----
   useEffect(() => {
@@ -62,7 +55,7 @@ export default function GraphPage() {
   }, []);
 
   // ---- コンテナサイズ ----
-  // allIdeas が変わるとエンプティ→メイン表示に切り替わり containerRef が DOM に入るため依存に含める
+  // allIdeasが変わるとエンプティ→メイン表示に切り替わりcontainerRefがDOMに入るため依存に含める
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -84,9 +77,12 @@ export default function GraphPage() {
     return map;
   }, [allConnections]);
 
-  // ---- Level 1: タグクラスタ構築 ----
+  // ---- 初期レイアウト計算（1回のみ） ----
   useEffect(() => {
     if (allIdeas.length === 0 || dimensions.width === 0) return;
+    if (nodes.length > 0) return; // 再計算しない
+
+    // タグ → アイデアIDマップ（先頭タグでグルーピング）
     const tagMap = new Map<string, string[]>();
     allIdeas.forEach((idea) => {
       const mainTag = idea.tags[0];
@@ -94,145 +90,87 @@ export default function GraphPage() {
       if (!tagMap.has(mainTag)) tagMap.set(mainTag, []);
       tagMap.get(mainTag)!.push(idea.id);
     });
+
+    // クラスタ配置
     const rawClusters: TagCluster[] = Array.from(tagMap.entries()).map(([tag, ids]) => ({
       tag, nodeCount: ids.length, ideaIds: ids, x: 0, y: 0, r: 0,
     }));
-    const laid = layoutTagClusters(rawClusters, dimensions.width / 2, dimensions.height / 2);
-    setTagClusters(laid);
-  }, [allIdeas, dimensions]);
+    const laidClusters = layoutTagClusters(rawClusters, dimensions.width / 2, dimensions.height / 2);
+    setClusters(laidClusters);
 
-  // ---- Level 2: タグ展開 → ノード表示 ----
-  const expandTag = useCallback((tag: string) => {
-    const cluster = tagClusters.find((c) => c.tag === tag);
-    if (!cluster) return;
+    // 全ノード配置（各クラスタ内で放射状）
+    const allNodes: GraphNode[] = [];
+    laidClusters.forEach((cluster) => {
+      const positions = layoutNodesInCluster(cluster.x, cluster.y, cluster.ideaIds.length);
+      cluster.ideaIds.forEach((ideaId, i) => {
+        const idea = allIdeas.find((a) => a.id === ideaId);
+        if (!idea) return;
+        const pos = positions[i];
+        allNodes.push({
+          id: idea.id,
+          summary: idea.summary,
+          graphLabel: idea.graph_label,
+          keywords: idea.keywords,
+          tags: idea.tags,
+          created_at: idea.created_at,
+          r: calcNodeRadius(connCountMap.get(idea.id) || 0),
+          x: pos.x,
+          y: pos.y,
+          isKnowledge: false,
+          connCount: connCountMap.get(idea.id) || 0,
+        });
+      });
+    });
+    setNodes(allNodes);
 
-    const ideas = cluster.ideaIds.map((id) => allIdeas.find((i) => i.id === id)).filter(Boolean) as Idea[];
-    const positions = layoutSatellites(cluster.x, cluster.y, ideas.length, IDEA_DISTANCE * 0.8);
-
-    const nodes: GraphNode[] = ideas.map((idea, i) => ({
-      id: idea.id, summary: idea.summary, graphLabel: idea.graph_label,
-      keywords: idea.keywords, tags: idea.tags, created_at: idea.created_at,
-      r: calcNodeRadius(connCountMap.get(idea.id) || 0),
-      x: positions[i].x, y: positions[i].y,
-      isKnowledge: false, connCount: connCountMap.get(idea.id) || 0,
-    }));
-
-    // クロスタグの線: このタグ内ノード同士の接続
+    // ベースリンク（idea間接続のみ。外部知識は含まない）
     const links: GraphLink[] = [];
-    const nodeIds = new Set(nodes.map((n) => n.id));
+    const nodeIdSet = new Set(allNodes.map((n) => n.id));
     allConnections.forEach((c) => {
       if (!c.idea_to_id) return;
-      if (nodeIds.has(c.idea_from_id) && nodeIds.has(c.idea_to_id)) {
-        links.push({ id: c.id, sourceId: c.idea_from_id, targetId: c.idea_to_id, connectionType: c.connection_type });
+      if (c.connection_type === "external_knowledge") return;
+      if (nodeIdSet.has(c.idea_from_id) && nodeIdSet.has(c.idea_to_id)) {
+        if (!links.some((l) => l.id === c.id)) {
+          links.push({ id: c.id, sourceId: c.idea_from_id, targetId: c.idea_to_id, connectionType: c.connection_type });
+        }
       }
     });
+    setBaseLinks(links);
+  }, [allIdeas, allConnections, dimensions, connCountMap, nodes.length]);
 
-    setVisibleNodes(nodes);
-    setVisibleLinks(links);
-    setActiveTag(tag);
-    setViewLevel("nodes");
-    setBreadcrumb([tag]);
+  // ---- fit-all ズーム ----
+  const applyFitAll = useCallback((nodeList: GraphNode[]) => {
+    if (!svgRef.current || !zoomRef.current || nodeList.length === 0) return;
+    const xs = nodeList.map((n) => n.x);
+    const ys = nodeList.map((n) => n.y);
+    const minX = Math.min(...xs) - 60;
+    const maxX = Math.max(...xs) + 60;
+    const minY = Math.min(...ys) - 60;
+    const maxY = Math.max(...ys) + 60;
+    const contentW = maxX - minX;
+    const contentH = maxY - minY;
+    const scale = Math.min(dimensions.width / contentW, dimensions.height / contentH, 1.2) * 0.9;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const tx = d3.zoomIdentity
+      .translate(dimensions.width / 2 - cx * scale, dimensions.height / 2 - cy * scale)
+      .scale(scale);
+    d3.select(svgRef.current)
+      .transition().duration(400).ease(d3.easeCubicOut)
+      .call(zoomRef.current.transform, tx);
+  }, [dimensions]);
+
+  // ---- リセット ----
+  const handleResetView = useCallback(() => {
+    setFocusedNodeId(null);
+    setKnowledgeNodes([]);
+    setKnowledgeLinks([]);
     setSelectedNode(null);
     setCombineResult(null);
-  }, [tagClusters, allIdeas, allConnections, connCountMap]);
-
-  // ---- Level 3: ノード展開 → 接続+外部知識 ----
-  const expandNode = useCallback((nodeId: string) => {
-    const idea = allIdeas.find((i) => i.id === nodeId);
-    if (!idea) return;
-
-    setCenterNodeId(nodeId);
-    setExpandedNodeIds((prev) => { const next = new Set(prev); next.add(nodeId); return next; });
-    setViewLevel("explore");
-    setBreadcrumb((prev) => [...prev, idea.graph_label]);
-
-    // 既存ノードの位置を保持
-    const existingPositions = new Map(visibleNodes.map((n) => [n.id, { x: n.x, y: n.y }]));
-    const parentPos = existingPositions.get(nodeId) ?? { x: dimensions.width / 2, y: dimensions.height / 2 };
-
-    const newNodes = [...visibleNodes];
-    const newLinks = [...visibleLinks];
-    const addedIds = new Set(newNodes.map((n) => n.id));
-
-    // 中心ノードのサイズを大きく
-    const centerIdx = newNodes.findIndex((n) => n.id === nodeId);
-    if (centerIdx >= 0) {
-      newNodes[centerIdx] = { ...newNodes[centerIdx], r: 42 };
-    }
-
-    // idea接続先を追加
-    const relatedConns = allConnections.filter(
-      (c) => (c.idea_from_id === nodeId && c.idea_to_id) || c.idea_to_id === nodeId
-    );
-    const newNeighborIds: string[] = [];
-    relatedConns.forEach((c) => {
-      if (c.connection_type === "external_knowledge") return;
-      const neighborId = c.idea_from_id === nodeId ? c.idea_to_id! : c.idea_from_id;
-      if (!addedIds.has(neighborId) && !newNeighborIds.includes(neighborId)) {
-        newNeighborIds.push(neighborId);
-      }
-      if (!newLinks.some((l) => l.id === c.id)) {
-        newLinks.push({ id: c.id, sourceId: c.idea_from_id, targetId: c.idea_to_id!, connectionType: c.connection_type });
-      }
-    });
-
-    if (newNeighborIds.length > 0) {
-      const positions = layoutWithCollisionAvoidance(parentPos.x, parentPos.y, newNeighborIds.length, IDEA_DISTANCE, newNodes);
-      newNeighborIds.forEach((nid, i) => {
-        const neighborIdea = allIdeas.find((idea) => idea.id === nid);
-        if (!neighborIdea) return;
-        newNodes.push({
-          id: nid, summary: neighborIdea.summary, graphLabel: neighborIdea.graph_label,
-          keywords: neighborIdea.keywords, tags: neighborIdea.tags, created_at: neighborIdea.created_at,
-          r: calcNodeRadius(connCountMap.get(nid) || 0),
-          x: positions[i].x, y: positions[i].y,
-          isKnowledge: false, connCount: connCountMap.get(nid) || 0,
-        });
-        addedIds.add(nid);
-      });
-    }
-
-    // external_knowledge追加
-    const knowledgeConns = allConnections.filter(
-      (c) => c.idea_from_id === nodeId && c.connection_type === "external_knowledge"
-    ).slice(0, 6);
-    const newKnowledge = knowledgeConns.filter((c) => !addedIds.has(`k-${c.id}`));
-    if (newKnowledge.length > 0) {
-      const kPositions = layoutSatellites(parentPos.x, parentPos.y, newKnowledge.length, KNOWLEDGE_DISTANCE, -45);
-      newKnowledge.forEach((c, i) => {
-        const kId = `k-${c.id}`;
-        newNodes.push({
-          id: kId, summary: c.external_knowledge_title ?? "", graphLabel: "",
-          keywords: [], tags: [], created_at: c.created_at, r: 14,
-          x: kPositions[i].x, y: kPositions[i].y,
-          isKnowledge: true, knowledgeTitle: c.external_knowledge_title ?? "",
-          knowledgeDescription: c.external_knowledge_summary ?? "",
-          knowledgeUrl: c.external_knowledge_url, parentIdeaId: nodeId, connCount: 0,
-        });
-        addedIds.add(kId);
-        newLinks.push({ id: `kl-${c.id}`, sourceId: nodeId, targetId: kId, connectionType: "external_knowledge" });
-      });
-    }
-
-    // 表示済みノード間の未追加リンク
-    allConnections.forEach((c) => {
-      if (!c.idea_to_id) return;
-      if (addedIds.has(c.idea_from_id) && addedIds.has(c.idea_to_id) && !newLinks.some((l) => l.id === c.id)) {
-        newLinks.push({ id: c.id, sourceId: c.idea_from_id, targetId: c.idea_to_id, connectionType: c.connection_type });
-      }
-    });
-
-    setVisibleNodes(newNodes);
-    setVisibleLinks(newLinks);
-
-    // SVGパン: ノードを中央に
-    if (svgRef.current && zoomRef.current) {
-      const svg = d3.select(svgRef.current);
-      const zoom = zoomRef.current;
-      const tx = d3.zoomIdentity.translate(dimensions.width / 2 - parentPos.x, dimensions.height / 2 - parentPos.y);
-      svg.transition().duration(600).ease(d3.easeCubicOut).call(zoom.transform, tx);
-    }
-  }, [allIdeas, allConnections, connCountMap, visibleNodes, visibleLinks, dimensions]);
+    setCombineMode(false);
+    setCombineNodeA(null);
+    applyFitAll(nodes);
+  }, [nodes, applyFitAll]);
 
   // ---- ノードタップ処理 ----
   const handleNodeTap = useCallback((node: GraphNode) => {
@@ -241,305 +179,407 @@ export default function GraphPage() {
     // combineモード中
     if (combineMode && combineNodeA && !node.isKnowledge) {
       if (node.id === combineNodeA.id) return;
-      setCombineLoading(true); setCombineMode(false); setSelectedNode(null);
+      setCombineLoading(true);
+      setCombineMode(false);
+      setSelectedNode(null);
       fetch("/api/combine", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ideaAId: combineNodeA.id, ideaBId: node.id }),
       }).then((r) => r.json()).then((data) => {
-        setCombineResult(data); setAllConnections(mockDb.connections.list());
+        setCombineResult(data);
+        setAllConnections(mockDb.connections.list());
       }).catch((e) => console.error("Combine error:", e))
         .finally(() => { setCombineLoading(false); setCombineNodeA(null); });
       return;
     }
 
-    if (node.isKnowledge) { setSelectedNode(node); return; }
-
-    // Level 2 → Level 3
-    if (viewLevel === "nodes") {
+    // 外部知識ノードタップ
+    if (node.isKnowledge) {
       setSelectedNode(node);
-      expandNode(node.id);
       return;
     }
 
-    // Level 3: 別ノードタップ → さらに展開
-    setSelectedNode(node);
-    setCombineResult(null);
-    expandNode(node.id);
-  }, [combineMode, combineNodeA, viewLevel, expandNode]);
+    // 同じノードを再タップ → フォーカス解除
+    if (focusedNodeId === node.id) {
+      setFocusedNodeId(null);
+      setKnowledgeNodes([]);
+      setKnowledgeLinks([]);
+      setSelectedNode(null);
+      return;
+    }
 
-  // ---- タグタップ ----
-  const handleTagTap = useCallback((tag: string) => {
-    if (navigator.vibrate) navigator.vibrate(10);
-    expandTag(tag);
-  }, [expandTag]);
+    // 新しいノードをフォーカス
+    setFocusedNodeId(node.id);
+    setSelectedNode(node);
+
+    // 外部知識を一時展開（最大4件）
+    const knowledgeConns = allConnections.filter(
+      (c) => c.idea_from_id === node.id && c.connection_type === "external_knowledge"
+    ).slice(0, 4);
+
+    if (knowledgeConns.length > 0) {
+      const positions = layoutKnowledge(
+        node.x, node.y, knowledgeConns.length,
+        nodes.map((n) => ({ x: n.x, y: n.y }))
+      );
+      setKnowledgeNodes(knowledgeConns.map((c, i) => ({
+        id: `k-${c.id}`,
+        summary: c.external_knowledge_title ?? "",
+        graphLabel: "",
+        keywords: [],
+        tags: [],
+        created_at: c.created_at,
+        r: 14,
+        x: positions[i].x,
+        y: positions[i].y,
+        isKnowledge: true,
+        knowledgeTitle: c.external_knowledge_title ?? "",
+        knowledgeDescription: c.external_knowledge_summary ?? "",
+        knowledgeUrl: c.external_knowledge_url,
+        parentIdeaId: node.id,
+        connCount: 0,
+      })));
+      setKnowledgeLinks(knowledgeConns.map((c) => ({
+        id: `kl-${c.id}`,
+        sourceId: node.id,
+        targetId: `k-${c.id}`,
+        connectionType: "knowledge_link" as const,
+      })));
+    } else {
+      setKnowledgeNodes([]);
+      setKnowledgeLinks([]);
+    }
+
+    // パン: フォーカスノードを画面中央に（600ms ease-out）
+    if (svgRef.current && zoomRef.current) {
+      const currentTransform = d3.zoomTransform(svgRef.current);
+      const tx = d3.zoomIdentity
+        .translate(
+          dimensions.width / 2 - node.x * currentTransform.k,
+          dimensions.height / 2 - node.y * currentTransform.k
+        )
+        .scale(currentTransform.k);
+      d3.select(svgRef.current)
+        .transition().duration(600).ease(d3.easeCubicOut)
+        .call(zoomRef.current.transform, tx);
+    }
+  }, [focusedNodeId, combineMode, combineNodeA, allConnections, nodes, dimensions]);
 
   // ---- 背景タップ ----
   const handleBackgroundTap = useCallback(() => {
-    if (combineMode) { setCombineMode(false); setCombineNodeA(null); return; }
-    setSelectedNode(null); setCombineResult(null);
+    if (combineMode) {
+      setCombineMode(false);
+      setCombineNodeA(null);
+      return;
+    }
+    setFocusedNodeId(null);
+    setKnowledgeNodes([]);
+    setKnowledgeLinks([]);
+    setSelectedNode(null);
+    setCombineResult(null);
   }, [combineMode]);
+
+  // d3イベントハンドラ内でstaleにならないよう ref経由で呼ぶ
+  const handleNodeTapRef = useRef(handleNodeTap);
+  handleNodeTapRef.current = handleNodeTap;
+  const handleBackgroundTapRef = useRef(handleBackgroundTap);
+  handleBackgroundTapRef.current = handleBackgroundTap;
 
   // ---- Combine ----
   const handleStartCombine = useCallback(() => {
     if (!selectedNode || selectedNode.isKnowledge) return;
-    setCombineNodeA(selectedNode); setCombineMode(true); setSelectedNode(null);
+    setCombineNodeA(selectedNode);
+    setCombineMode(true);
+    setSelectedNode(null);
   }, [selectedNode]);
 
   const handleCancelCombine = useCallback(() => {
-    setCombineMode(false); setCombineNodeA(null);
+    setCombineMode(false);
+    setCombineNodeA(null);
   }, []);
-
-  // ---- 全体表示リセット ----
-  const handleResetView = useCallback(() => {
-    setViewLevel("tags"); setActiveTag(null); setCenterNodeId(null);
-    setExpandedNodeIds(new Set()); setVisibleNodes([]); setVisibleLinks([]);
-    setSelectedNode(null); setCombineResult(null); setCombineMode(false);
-    setBreadcrumb([]);
-    if (svgRef.current && zoomRef.current) {
-      const svg = d3.select(svgRef.current);
-      svg.transition().duration(400).ease(d3.easeCubicOut)
-        .call(zoomRef.current.transform, d3.zoomIdentity);
-    }
-  }, []);
-
-  // ---- パンくず遷移 ----
-  const handleBreadcrumbTap = useCallback((index: number) => {
-    if (index === 0 && breadcrumb.length > 0) {
-      const tag = breadcrumb[0];
-      setViewLevel("nodes"); setCenterNodeId(null);
-      setExpandedNodeIds(new Set()); setBreadcrumb([tag]);
-      setSelectedNode(null); setCombineResult(null);
-      expandTag(tag);
-    }
-  }, [breadcrumb, expandTag]);
 
   // ---- 接続ID取得 ----
   const getConnectionId = useCallback((nodeId: string): string | null => {
-    if (!centerNodeId) return null;
+    if (!focusedNodeId) return null;
     const conn = allConnections.find(
-      (c) => (c.idea_from_id === centerNodeId && c.idea_to_id === nodeId) ||
-             (c.idea_from_id === nodeId && c.idea_to_id === centerNodeId)
+      (c) => (c.idea_from_id === focusedNodeId && c.idea_to_id === nodeId) ||
+             (c.idea_from_id === nodeId && c.idea_to_id === focusedNodeId)
     );
     return conn?.id ?? null;
-  }, [allConnections, centerNodeId]);
+  }, [allConnections, focusedNodeId]);
 
-  // ---- エッジスタイル ----
-  function getLinkStyle(type: GraphLink["connectionType"]): { stroke: string; strokeWidth: number; strokeDasharray: string } {
-    switch (type) {
-      case "external_knowledge": case "knowledge_link":
-        return { stroke: "#CCCCCC", strokeWidth: 0.5, strokeDasharray: "4 2" };
-      case "combination": return { stroke: "#999999", strokeWidth: 1.5, strokeDasharray: "none" };
-      case "manual": return { stroke: "#CCCCCC", strokeWidth: 0.5, strokeDasharray: "none" };
-      case "chat_derived": return { stroke: "#CCCCCC", strokeWidth: 0.5, strokeDasharray: "2 2" };
-      default: return { stroke: "#E0E0E0", strokeWidth: 0.5, strokeDasharray: "4 2" };
-    }
-  }
-
-  // ==== SVG描画 ====
+  // ==== 主SVG描画（ノード/クラスタ/baseLinks確定後1回） ====
   useEffect(() => {
-    if (!svgRef.current || dimensions.width === 0) return;
+    if (!svgRef.current || dimensions.width === 0 || nodes.length === 0) return;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
     svg.attr("width", dimensions.width).attr("height", dimensions.height).style("touch-action", "none");
 
-    const g = svg.append("g");
+    const g = svg.append("g").attr("class", "canvas");
+
+    // zoom
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.3, 3])
-      .on("zoom", (event) => { g.attr("transform", event.transform); });
+      .scaleExtent([0.1, 4])
+      .on("zoom", (event) => {
+        g.attr("transform", event.transform);
+        const k = event.transform.k;
+
+        // タグラベル LOD
+        g.selectAll<SVGTextElement, TagCluster>(".tag-label")
+          .attr("font-size", k < 0.5 ? 24 / k : k < 1.0 ? 16 / k : 16)
+          .attr("opacity", k >= 1.0 ? 0.15 : 1);
+
+        // ノード円 LOD
+        g.selectAll<SVGCircleElement, GraphNode>(".node-circle")
+          .attr("r", (d) => {
+            if (k < 0.5) return 3;
+            if (k < 1.0) return calcNodeRadius(d.connCount) * 0.6;
+            return calcNodeRadius(d.connCount);
+          });
+
+        // graph_label LOD
+        g.selectAll(".node-label")
+          .attr("opacity", k >= 1.0 ? 1 : 0);
+
+        // 接続線 LOD
+        g.selectAll(".base-link")
+          .attr("opacity", k < 0.5 ? 0 : k < 1.0 ? 0.15 : 0.3);
+      });
+
     svg.call(zoom);
     zoomRef.current = zoom;
 
+    // レイヤー構築（描画順 = 重なり順）
+    g.append("g").attr("class", "layer-links");
+    g.append("g").attr("class", "layer-focus-links");
+    g.append("g").attr("class", "layer-clusters");
+    g.append("g").attr("class", "layer-nodes");
+    g.append("g").attr("class", "layer-knowledge");
+
+    // ---- レイヤー1: baseLinks（常時表示、LODでopacity変化） ----
+    g.select(".layer-links")
+      .selectAll<SVGLineElement, GraphLink>("line.base-link")
+      .data(baseLinks)
+      .enter().append("line").attr("class", "base-link")
+      .attr("x1", (d) => nodes.find((n) => n.id === d.sourceId)?.x ?? 0)
+      .attr("y1", (d) => nodes.find((n) => n.id === d.sourceId)?.y ?? 0)
+      .attr("x2", (d) => nodes.find((n) => n.id === d.targetId)?.x ?? 0)
+      .attr("y2", (d) => nodes.find((n) => n.id === d.targetId)?.y ?? 0)
+      .attr("stroke", "var(--border)")
+      .attr("stroke-width", 0.5)
+      .attr("opacity", 0.3);
+
+    // ---- レイヤー3: クラスタ囲み円 + タグ名 ----
+    const layerClusters = g.select(".layer-clusters");
+    clusters.forEach((cluster) => {
+      layerClusters.append("circle")
+        .attr("class", "cluster-circle")
+        .attr("cx", cluster.x).attr("cy", cluster.y).attr("r", cluster.r)
+        .attr("fill", "none")
+        .attr("stroke", "var(--border)")
+        .attr("stroke-width", 0.5)
+        .attr("stroke-dasharray", "4 3");
+
+      layerClusters.append("text")
+        .attr("class", "tag-label")
+        .attr("x", cluster.x)
+        .attr("y", cluster.y - cluster.r - 8)
+        .attr("text-anchor", "middle")
+        .attr("font-size", 16)
+        .attr("font-weight", "500")
+        .attr("fill", "var(--text-secondary)")
+        .attr("pointer-events", "none")
+        .text(cluster.tag);
+    });
+
+    // ---- レイヤー4: ノード ----
+    const layerNodes = g.select(".layer-nodes");
     let pointerStart = { x: 0, y: 0 };
 
-    // ==== Level 1: タグクラスタ描画 ====
-    if (viewLevel === "tags" && tagClusters.length > 0) {
-      // タグ間のクロスリンク（同じアイデアが複数タグに属する場合の薄い線）
-      const tagPairs: [TagCluster, TagCluster][] = [];
-      for (let i = 0; i < tagClusters.length; i++) {
-        for (let j = i + 1; j < tagClusters.length; j++) {
-          const shared = tagClusters[i].ideaIds.some((id) => {
-            const idea = allIdeas.find((idea) => idea.id === id);
-            return idea?.tags.includes(tagClusters[j].tag);
-          });
-          if (shared) tagPairs.push([tagClusters[i], tagClusters[j]]);
-        }
-      }
-      tagPairs.forEach(([a, b]) => {
-        g.append("line")
-          .attr("x1", a.x).attr("y1", a.y).attr("x2", b.x).attr("y2", b.y)
-          .attr("stroke", "#E0E0E0").attr("stroke-width", 0.5).attr("stroke-dasharray", "6 4")
-          .attr("opacity", 0.5);
-      });
-
-      // タグクラスタ円
-      const tagGroup = g.selectAll<SVGGElement, TagCluster>("g.tag-cluster")
-        .data(tagClusters).enter().append("g").attr("class", "tag-cluster")
-        .attr("transform", (d) => `translate(${d.x},${d.y})`).attr("cursor", "pointer")
-        .on("pointerdown", (event) => { pointerStart = { x: event.clientX, y: event.clientY }; })
-        .on("pointerup", (event, d) => {
-          if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) <= 5) {
-            event.stopPropagation(); handleTagTap(d.tag);
-          }
-        });
-
-      // 外円
-      tagGroup.append("circle").attr("r", (d) => d.r)
-        .attr("fill", "#FFFFFF").attr("stroke", "#E0E0E0").attr("stroke-width", 0.5);
-
-      // 中のノード予感（うっすら点）
-      tagGroup.each(function (d) {
-        const group = d3.select(this);
-        const inner = layoutSatellites(0, 0, Math.min(d.nodeCount, 5), d.r * 0.5);
-        inner.forEach((pos) => {
-          group.append("circle").attr("cx", pos.x).attr("cy", pos.y).attr("r", 4)
-            .attr("fill", "#E0E0E0").attr("opacity", 0.4);
-        });
-      });
-
-      // タグ名
-      tagGroup.append("text").attr("text-anchor", "middle").attr("dominant-baseline", "central")
-        .attr("dy", "-8px").attr("font-size", "13px").attr("font-weight", "500")
-        .attr("fill", "#555555").attr("pointer-events", "none")
-        .text((d) => d.tag);
-
-      // ノード数
-      tagGroup.append("text").attr("text-anchor", "middle").attr("dominant-baseline", "central")
-        .attr("dy", "10px").attr("font-size", "11px").attr("fill", "#BBBBBB")
-        .attr("pointer-events", "none")
-        .style("font-family", "'JetBrains Mono', ui-monospace, monospace")
-        .text((d) => `${d.nodeCount} nodes`);
-
-      return;
-    }
-
-    // ==== Level 2 & 3: ノード + エッジ描画 ====
-    if (visibleNodes.length === 0) return;
-
-    // 中心ノードにパン
-    if (centerNodeId) {
-      const cn = visibleNodes.find((n) => n.id === centerNodeId);
-      if (cn) svg.call(zoom.transform, d3.zoomIdentity.translate(dimensions.width / 2 - cn.x, dimensions.height / 2 - cn.y));
-    } else if (activeTag) {
-      const cluster = tagClusters.find((c) => c.tag === activeTag);
-      if (cluster) svg.call(zoom.transform, d3.zoomIdentity.translate(dimensions.width / 2 - cluster.x, dimensions.height / 2 - cluster.y));
-    }
-
-    // エッジ
-    const linkData = visibleLinks.filter((l) =>
-      visibleNodes.some((n) => n.id === l.sourceId) && visibleNodes.some((n) => n.id === l.targetId)
-    );
-    g.selectAll("line.graph-link").data(linkData, (d) => (d as GraphLink).id)
-      .enter().append("line").attr("class", "graph-link")
-      .attr("x1", (d) => visibleNodes.find((n) => n.id === d.sourceId)!.x)
-      .attr("y1", (d) => visibleNodes.find((n) => n.id === d.sourceId)!.y)
-      .attr("x2", (d) => visibleNodes.find((n) => n.id === d.targetId)!.x)
-      .attr("y2", (d) => visibleNodes.find((n) => n.id === d.targetId)!.y)
-      .each(function (d) {
-        const s = getLinkStyle(d.connectionType);
-        d3.select(this).attr("stroke", s.stroke).attr("stroke-width", s.strokeWidth).attr("stroke-dasharray", s.strokeDasharray);
-      });
-
-    // ノード
-    const nodeGroup = g.selectAll<SVGGElement, GraphNode>("g.graph-node")
-      .data(visibleNodes, (d) => (d as GraphNode).id).enter().append("g").attr("class", "graph-node")
-      .attr("transform", (d) => `translate(${d.x},${d.y})`).attr("cursor", "pointer")
-      .on("pointerdown", (event) => { pointerStart = { x: event.clientX, y: event.clientY }; })
+    const nodeGroups = layerNodes
+      .selectAll<SVGGElement, GraphNode>("g.node-group")
+      .data(nodes, (d) => d.id)
+      .enter().append("g").attr("class", "node-group")
+      .attr("transform", (d) => `translate(${d.x},${d.y})`)
+      .attr("cursor", "pointer")
+      .on("pointerdown", (event) => {
+        pointerStart = { x: event.clientX, y: event.clientY };
+      })
       .on("pointerup", (event, d) => {
         if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) <= 5) {
-          event.stopPropagation(); handleNodeTap(d);
+          event.stopPropagation();
+          handleNodeTapRef.current(d);
         }
       });
 
-    // ヒットエリア拡張（透明、見た目r+12px）
-    nodeGroup.append("circle").attr("r", (d) => d.r + 12)
-      .attr("fill", "transparent").attr("stroke", "none");
+    // ヒットエリア拡張（r + 12px 透明circle）
+    nodeGroups.append("circle")
+      .attr("r", (d) => d.r + 12)
+      .attr("fill", "transparent")
+      .attr("stroke", "none");
 
-    // 表示用円
-    nodeGroup.append("circle").attr("r", (d) => d.r)
-      .attr("fill", "#FFFFFF")
-      .attr("stroke", (d) => {
-        if (d.id === centerNodeId) return "#222222";
-        if (d.isKnowledge) return "#CCCCCC";
-        return "#E0E0E0";
-      })
-      .attr("stroke-width", (d) => {
-        if (d.id === centerNodeId) return 1.5;
-        if (expandedNodeIds.size > 0 && d.id === Array.from(expandedNodeIds)[0]) return 2;
-        return 0.5;
-      })
-      .attr("stroke-dasharray", (d) => (d.isKnowledge ? "3 2" : "none"));
+    // ノード円
+    nodeGroups.append("circle")
+      .attr("class", "node-circle")
+      .attr("r", (d) => calcNodeRadius(d.connCount))
+      .attr("fill", "var(--bg-secondary)")
+      .attr("stroke", "var(--border)")
+      .attr("stroke-width", 0.5);
 
-    // combineインジケータ
-    if (combineMode) {
-      nodeGroup.filter((d) => !d.isKnowledge && d.id !== combineNodeA?.id)
-        .append("circle").attr("r", (d) => d.r + 4).attr("fill", "none")
-        .attr("stroke", "#BBBBBB").attr("stroke-width", 1).attr("opacity", 0.5)
-        .append("animate").attr("attributeName", "opacity").attr("values", "0.2;0.6;0.2")
-        .attr("dur", "1.6s").attr("repeatCount", "indefinite");
-    }
-
-    // 意味的ズーム: ラベル表示はzoom scaleで制御
-    const currentScale = d3.zoomTransform(svgRef.current!).k;
-    const showLabels = currentScale >= 0.7;
-
-    if (showLabels) {
-      // graph_label テキスト
-      nodeGroup.filter((d) => !d.isKnowledge).append("text")
-        .attr("text-anchor", "middle").attr("dominant-baseline", "central")
-        .attr("font-size", (d) => (d.id === centerNodeId ? "13px" : "11px"))
-        .attr("font-weight", (d) => (d.id === centerNodeId ? "500" : "400"))
-        .attr("fill", (d) => (d.id === centerNodeId ? "#222222" : "#888888"))
-        .attr("pointer-events", "none")
-        .attr("dy", (d) => (d.id === centerNodeId ? "-6px" : "0"))
-        .text((d) => {
-          const label = d.graphLabel || d.summary;
-          const max = d.id === centerNodeId ? 7 : 5;
-          return label.length > max ? label.slice(0, max) + "…" : label;
-        });
-
-      // 中心ノード接続数
-      nodeGroup.filter((d) => d.id === centerNodeId).append("text")
-        .attr("text-anchor", "middle").attr("dominant-baseline", "central")
-        .attr("font-size", "10px").attr("fill", "#BBBBBB").attr("pointer-events", "none")
-        .attr("dy", "8px").text((d) => `${d.connCount} conn`);
-
-      // 外部知識ラベル
-      nodeGroup.filter((d) => d.isKnowledge).append("text")
-        .attr("text-anchor", "middle").attr("dominant-baseline", "central")
-        .attr("font-size", "9px").attr("fill", "#BBBBBB").attr("pointer-events", "none")
-        .text((d) => {
-          if (d.parentIdeaId === centerNodeId) {
-            const t = d.knowledgeTitle ?? "";
-            return t.length > 4 ? t.slice(0, 4) + "…" : t;
-          }
-          return "";
-        });
-    }
-
-    // zoom時にラベル表示/非表示を更新
-    zoom.on("zoom", (event) => {
-      g.attr("transform", event.transform);
-      const scale = event.transform.k;
-      g.selectAll("text").attr("opacity", scale >= 0.7 ? 1 : 0);
-    });
+    // graph_label（初期opacity:0 → LODで更新）
+    nodeGroups.append("text")
+      .attr("class", "node-label")
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .attr("font-size", "11px")
+      .attr("fill", "var(--text-secondary)")
+      .attr("pointer-events", "none")
+      .attr("opacity", 0)
+      .text((d) => {
+        const label = d.graphLabel || d.summary;
+        return label.length > 5 ? label.slice(0, 5) + "…" : label;
+      });
 
     // 背景タップ
     svg.on("click", (event) => {
-      if (event.target === svgRef.current) handleBackgroundTap();
+      if (event.target === svgRef.current) handleBackgroundTapRef.current();
     });
-  }, [viewLevel, tagClusters, visibleNodes, visibleLinks, centerNodeId, activeTag, dimensions, combineMode, combineNodeA, expandedNodeIds, handleTagTap, handleNodeTap, handleBackgroundTap, allIdeas]);
+
+    // 初期 fit-all（アニメーションなし）
+    const xs = nodes.map((n) => n.x);
+    const ys = nodes.map((n) => n.y);
+    const minX = Math.min(...xs) - 60;
+    const maxX = Math.max(...xs) + 60;
+    const minY = Math.min(...ys) - 60;
+    const maxY = Math.max(...ys) + 60;
+    const contentW = maxX - minX;
+    const contentH = maxY - minY;
+    const initScale = Math.min(dimensions.width / contentW, dimensions.height / contentH, 1.2) * 0.9;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const initTx = d3.zoomIdentity
+      .translate(dimensions.width / 2 - cx * initScale, dimensions.height / 2 - cy * initScale)
+      .scale(initScale);
+    svg.call(zoom.transform, initTx);
+
+  }, [nodes, clusters, baseLinks, dimensions]);
+
+  // ==== フォーカス更新（focusedNodeId / knowledgeNodes 変更時） ====
+  useEffect(() => {
+    if (!svgRef.current || nodes.length === 0) return;
+    const svg = d3.select(svgRef.current);
+    const g = svg.select<SVGGElement>("g.canvas");
+    if (g.empty()) return;
+
+    // ノード円のstroke更新
+    g.selectAll<SVGCircleElement, GraphNode>("circle.node-circle")
+      .attr("stroke", (d) => d.id === focusedNodeId ? "var(--text-primary)" : "var(--border)")
+      .attr("stroke-width", (d) => d.id === focusedNodeId ? 2 : 0.5);
+
+    // ---- レイヤー2: フォーカスリンク更新 ----
+    const layerFocusLinks = g.select(".layer-focus-links");
+    layerFocusLinks.selectAll("*").remove();
+
+    if (focusedNodeId) {
+      const focusedNode = nodes.find((n) => n.id === focusedNodeId);
+      if (focusedNode) {
+        const focusConns = allConnections.filter((c) => {
+          if (c.connection_type === "external_knowledge") return false;
+          return (c.idea_from_id === focusedNodeId && c.idea_to_id) ||
+                 c.idea_to_id === focusedNodeId;
+        });
+
+        focusConns.forEach((c) => {
+          const targetId = c.idea_from_id === focusedNodeId ? c.idea_to_id! : c.idea_from_id;
+          const targetNode = nodes.find((n) => n.id === targetId);
+          if (!targetNode) return;
+          const x1 = focusedNode.x, y1 = focusedNode.y;
+          const x2 = targetNode.x, y2 = targetNode.y;
+          const len = Math.hypot(x2 - x1, y2 - y1);
+
+          layerFocusLinks.append("line")
+            .attr("class", "focus-link")
+            .attr("x1", x1).attr("y1", y1)
+            .attr("x2", x2).attr("y2", y2)
+            .attr("stroke", "var(--border-strong)")
+            .attr("stroke-width", 1.5)
+            .attr("stroke-dasharray", len)
+            .attr("stroke-dashoffset", len)
+            .transition().duration(800).ease(d3.easeCubicOut)
+            .attr("stroke-dashoffset", 0);
+        });
+      }
+    }
+
+    // ---- レイヤー5: 外部知識ノード更新 ----
+    const layerKnowledge = g.select(".layer-knowledge");
+    layerKnowledge.selectAll("*").remove();
+
+    if (knowledgeNodes.length > 0 && focusedNodeId) {
+      const focusedNode = nodes.find((n) => n.id === focusedNodeId);
+
+      // 外部知識への破線
+      knowledgeLinks.forEach((kl) => {
+        const kNode = knowledgeNodes.find((kn) => kn.id === kl.targetId);
+        if (!focusedNode || !kNode) return;
+        layerKnowledge.append("line")
+          .attr("class", "knowledge-link")
+          .attr("x1", focusedNode.x).attr("y1", focusedNode.y)
+          .attr("x2", kNode.x).attr("y2", kNode.y)
+          .attr("stroke", "var(--border)")
+          .attr("stroke-width", 0.5)
+          .attr("stroke-dasharray", "3 2")
+          .attr("opacity", 0.5);
+      });
+
+      // 外部知識ノード
+      let kPointerStart = { x: 0, y: 0 };
+      const kGroups = layerKnowledge
+        .selectAll<SVGGElement, GraphNode>("g.knowledge-group")
+        .data(knowledgeNodes)
+        .enter().append("g").attr("class", "knowledge-group")
+        .attr("transform", (d) => `translate(${d.x},${d.y})`)
+        .attr("cursor", "pointer")
+        .on("pointerdown", (event) => { kPointerStart = { x: event.clientX, y: event.clientY }; })
+        .on("pointerup", (event, d) => {
+          if (Math.hypot(event.clientX - kPointerStart.x, event.clientY - kPointerStart.y) <= 5) {
+            event.stopPropagation();
+            handleNodeTapRef.current(d);
+          }
+        });
+
+      kGroups.append("circle")
+        .attr("r", 14)
+        .attr("fill", "var(--bg-secondary)")
+        .attr("stroke", "var(--border)")
+        .attr("stroke-width", 0.5)
+        .attr("stroke-dasharray", "3 2");
+
+      kGroups.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "central")
+        .attr("font-size", "9px")
+        .attr("fill", "var(--text-muted)")
+        .attr("pointer-events", "none")
+        .text((d) => {
+          const t = d.knowledgeTitle ?? "";
+          return t.length > 4 ? t.slice(0, 4) + "…" : t;
+        });
+    }
+  }, [focusedNodeId, knowledgeNodes, knowledgeLinks, nodes, allConnections]);
 
   // ---- エンプティ ----
   if (allIdeas.length === 0) {
     return (
       <main className="flex flex-col h-dvh overflow-hidden animate-page-enter">
         <AppHeader />
-        <div className="flex-1 flex flex-col items-center justify-center" style={{ paddingBottom: "20vh" }}>
+        <div ref={containerRef} className="flex-1 flex flex-col items-center justify-center" style={{ paddingBottom: "20vh" }}>
           <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-            <circle cx="40" cy="40" r="38" stroke="#E0E0E0" strokeWidth="0.5" />
-            <circle cx="40" cy="40" r="24" stroke="#E0E0E0" strokeWidth="0.5" />
-            <circle cx="40" cy="40" r="10" stroke="#E0E0E0" strokeWidth="0.5" />
+            <circle cx="40" cy="40" r="38" stroke="var(--border)" strokeWidth="0.5" />
+            <circle cx="40" cy="40" r="24" stroke="var(--border)" strokeWidth="0.5" />
+            <circle cx="40" cy="40" r="10" stroke="var(--border)" strokeWidth="0.5" />
           </svg>
           <span className="mt-4 text-xs" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>0 nodes</span>
         </div>
@@ -549,18 +589,14 @@ export default function GraphPage() {
 
   return (
     <main className="flex flex-col h-dvh overflow-hidden animate-page-enter">
-      <AppHeader rightContent={
-        viewLevel !== "tags" ? (
-          <button onClick={handleResetView} className="text-[11px]" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+      <AppHeader
+        rightContent={
+          <button onClick={handleResetView} className="text-[11px]"
+            style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
             reset
           </button>
-        ) : undefined
-      } />
-
-      {/* パンくず */}
-      {breadcrumb.length > 0 && (
-        <Breadcrumb items={breadcrumb} onTap={handleBreadcrumbTap} />
-      )}
+        }
+      />
 
       {/* combineバナー */}
       {combineMode && (
@@ -581,23 +617,27 @@ export default function GraphPage() {
 
       {/* SVGキャンバス */}
       <div ref={containerRef} className="flex-1 min-h-0 relative"
-        onClick={(e) => { if (e.target === e.currentTarget) handleBackgroundTap(); }}>
+        onClick={(e) => { if (e.target === e.currentTarget) handleBackgroundTapRef.current(); }}>
         <svg ref={svgRef} className="absolute inset-0" />
       </div>
 
       {/* 詳細パネル */}
       {selectedNode && !combineResult && !combineMode && (
-        <DetailPanel node={selectedNode}
+        <DetailPanel
+          node={selectedNode}
           connectionId={!selectedNode.isKnowledge ? getConnectionId(selectedNode.id) : null}
           onDetail={() => { if (!selectedNode.isKnowledge) router.push(`/memo/${selectedNode.id}`); }}
           onDeepDive={(connId) => router.push(`/chat?connection=${connId}`)}
-          onCombine={handleStartCombine} />
+          onCombine={handleStartCombine}
+        />
       )}
 
       {combineResult && (
-        <CombinePanel result={combineResult}
+        <CombinePanel
+          result={combineResult}
           onDeepDive={(connId) => { setCombineResult(null); router.push(`/chat?connection=${connId}`); }}
-          onClose={() => setCombineResult(null)} />
+          onClose={() => setCombineResult(null)}
+        />
       )}
     </main>
   );
