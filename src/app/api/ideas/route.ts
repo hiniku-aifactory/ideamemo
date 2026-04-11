@@ -208,6 +208,8 @@ export async function POST(request: NextRequest) {
             userId,
           };
 
+          const sentTitles = new Set<string>();
+
           await Promise.all(
             domains.map(async ({ domain, novelty }) => {
               try {
@@ -218,6 +220,13 @@ export async function POST(request: NextRequest) {
                   console.warn(`[A01] Empty connection for domain ${domain}, skipping`);
                   return;
                 }
+
+                // タイトル重複チェック
+                if (sentTitles.has(result.title)) {
+                  console.warn(`[A01] Duplicate title "${result.title}" for domain ${domain}, skipping`);
+                  return;
+                }
+                sentTitles.add(result.title);
 
                 const conn: Connection = {
                   id: crypto.randomUUID(),

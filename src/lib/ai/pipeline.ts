@@ -197,8 +197,31 @@ Output JSON only:
     domains: { domain: string; reason: string }[];
   };
 
+  // 重複除去 + original domain除外
+  const seen = new Set<string>();
+  const uniqueDomains = domainParsed.domains.filter((d) => {
+    const key = d.domain.toLowerCase();
+    if (seen.has(key) || key === input.domain.toLowerCase()) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // 3件に満たない場合はDOMAIN_POOLから補充
+  const DOMAIN_POOL = [
+    "food", "fashion", "music", "sports", "housing", "travel", "books", "movies", "nature",
+    "architecture", "games", "education", "medicine", "agriculture", "craft",
+    "transportation", "hospitality", "retail", "performing_arts", "manufacturing",
+  ];
+  while (uniqueDomains.length < 3) {
+    const candidate = DOMAIN_POOL[Math.floor(Math.random() * DOMAIN_POOL.length)];
+    if (!seen.has(candidate) && candidate !== input.domain.toLowerCase()) {
+      seen.add(candidate);
+      uniqueDomains.push({ domain: candidate, reason: "fallback" });
+    }
+  }
+
   const familiarIndex = Math.floor(Math.random() * 3);
-  return domainParsed.domains.slice(0, 3).map((d, i) => ({
+  return uniqueDomains.slice(0, 3).map((d, i) => ({
     domain: d.domain,
     novelty: (i === familiarIndex ? "familiar_ok" : "niche_required") as NoveltyLevel,
   }));
