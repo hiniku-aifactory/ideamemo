@@ -1,11 +1,90 @@
-# P3 プロンプト v3（pipeline.ts 差し替え用）
+# P3 プロンプト v5（pipeline.ts 差し替え用）
 
-## 設計方針の転換
+## 設計方針の変遷
 
-- v2: 「驚かせろ」「意外な分野に飛べ」→ 学術論文やVC事例に飛ぶ → ユーザーは「ふーん」で終わる
-- v3: 「共感させろ」「日常の別の場面で同じ構造を見つけろ」→ ユーザーが「あー、それも同じだわ！」と自分の体験と重ねられる
+- v2: 「驚かせろ」→ 学術論文やVC事例に飛ぶ → ユーザーは「ふーん」で終わる
+- v3: 「共感させろ」→ 日常の身近な事実を接続 → ✅ 身近だが「知ってる」リスク
+- v4: 新規性バランス（2/3ニッチ+1/3ギリOK）+ 有名度ペナルティ → ✅ だが固定3アングルに設計的欠陥
+- **v5: 固定アングル廃止。3枚とも「異分野」に統一。AIが毎回メモに合った3ドメインを動的選択。過去履歴参照で多様性担保**
 
 ユーザーが友達に話せるかどうかが品質基準。
+
+---
+
+## プロンプト⓪ ドメイン選択（v5で新設）
+
+接続生成の最初のステップ。メモの構造に対して「この構造が現れそうな3つの異分野」をAIが選ぶ。
+
+### system
+```
+You select 3 domains where a given abstract structure might appear in everyday life.
+
+Your job:
+1. Read the abstract_principle
+2. Pick 3 domains from the DOMAIN_POOL where this structure plausibly appears
+3. The 3 domains must be DIFFERENT from each other AND from the memo's original domain
+
+DOMAIN_POOL:
+food, fashion, music, sports, housing, travel, books, movies, nature,
+architecture, games, education, medicine, agriculture, craft,
+transportation, hospitality, retail, performing_arts, manufacturing
+
+Rules:
+- Pick domains where you can imagine a SPECIFIC episode, not just a vague connection
+- Spread across different "worlds" — don't pick 3 that are similar (e.g. fashion + retail + craft)
+- DO NOT pick domains just because YOU can think of a famous example there
+  → If the first thing that comes to mind is a TED Talk or pop-science book, that domain is contaminated — pick a different one
+- Prefer domains that would SURPRISE the user as a connection point
+```
+
+### user
+```
+Abstract structure: ${input.abstract_principle}
+Original domain: ${input.domain}
+
+${historySection}
+
+Pick 3 domains from the DOMAIN_POOL.
+Output JSON only:
+{
+  "domains": [
+    {"domain": "...", "reason": "why this structure appears here (1 sentence)"},
+    {"domain": "...", "reason": "..."},
+    {"domain": "...", "reason": "..."}
+  ]
+}
+```
+
+### 履歴セクション生成
+
+```typescript
+function buildHistorySection(userId: string): string {
+  // 直近20件の接続カードから使用ドメイン+事例タイトルを取得
+  const recent = await getRecentConnections(userId, 20);
+
+  if (recent.length === 0) return "";
+
+  const usedDomains = recent.map(c => c.domain).filter(Boolean);
+  const usedTitles = recent.map(c => c.title);
+
+  const domainCounts: Record<string, number> = {};
+  usedDomains.forEach(d => { domainCounts[d] = (domainCounts[d] || 0) + 1; });
+
+  // 3回以上使われたドメインを「過剰使用」として列挙
+  const overused = Object.entries(domainCounts)
+    .filter(([_, count]) => count >= 3)
+    .map(([domain]) => domain);
+
+  let section = `\nDIVERSITY CONSTRAINT:\n`;
+  if (overused.length > 0) {
+    section += `These domains have been used 3+ times recently. AVOID them: ${overused.join(", ")}\n`;
+  }
+  section += `\nRecent card titles (DO NOT generate similar topics):\n`;
+  usedTitles.slice(0, 10).forEach(t => { section += `- ${t}\n`; });
+
+  return section;
+}
+```
 
 ---
 
@@ -17,14 +96,17 @@ You generate search queries that find RELATABLE everyday examples sharing the sa
 
 Your job:
 1. Read the abstract_principle — this is the hidden structure
-2. Think of a DIFFERENT everyday situation where the same structure appears
-3. Generate a query to find a concrete, specific example from that situation
+2. You are given a target domain — find a concrete, specific example from THAT domain
+3. Generate a query to find it via web search
 
 Rules:
-- The example must be something ordinary people encounter in daily life: food, shopping, travel, music, fashion, sports, housing, books, movies
+- The example must be something ordinary people encounter in daily life
 - NOT academic papers, NOT startup case studies, NOT scientific theories
-- The query must include a concrete noun (wine, hotel, book cover, movie soundtrack, etc.)
+- The query must include a concrete noun specific to the target domain
 - Search for FACTS and EPISODES, not theories
+- DO NOT generate a query to confirm something you already know
+  → If you already have an example in mind, your query is biased. Try to find something you DON'T know
+- Include a specific proper noun (person, place, brand, event) when possible
 ```
 
 ### user
@@ -32,21 +114,21 @@ Rules:
 Memo summary: ${input.summary}
 Hidden structure: ${input.abstract_principle}
 Original domain: ${input.domain}
+Target domain: ${targetDomain}
+Novelty level: ${noveltyLevel}
 
-${angle.queryGuide}
+${noveltyLevel === "niche_required"
+  ? "NICHE REQUIRED: The user should say 'I've never heard of that.' Include a specific person's job title, company name, or place name. BANNED: TED Talk staples, pop-science examples (Gladwell, Kahneman, Ariely), viral internet examples."
+  : "FAMILIAR OK: Well-known examples acceptable IF framed as specific episodes, not theory names. Still prefer lesser-known examples."}
+
+${recentTitlesSection}
 
 Generate ONE English search query (4-8 words).
-The query must find an everyday example from a domain DIFFERENT from: ${input.domain}
 
-Good examples:
-- Structure "選別の副産物" → "wine label design correlates taste quality"
-- Structure "集団の最初の一歩" → "first person clapping triggers standing ovation"
-- Structure "制約が創造を生む" → "Twitter 140 character limit creative writing"
-
-Bad examples:
-- "Zahavi handicap principle biology" (academic paper, not relatable)
-- "Y Combinator selection quality signal" (startup world, niche audience)
-- "restaurant quality curation" (same domain as memo)
+Good: "Michelin inspector restaurant bathroom quality" (niche, specific person)
+Good: "Tokyo ramen shop first customer line effect" (specific place)
+Bad: "paradox of choice consumer behavior" (academic, famous)
+Bad: "Netflix recommendation algorithm" (everyone knows this)
 ```
 
 ---
@@ -112,70 +194,70 @@ ${searchResults.map((r, i) => `[${i + 1}] ${r.title}\n${r.description}\nURL: ${r
 
 ---
 
-## SEARCH_ANGLES v4（新規性バランス: 2/3ニッチ + 1/3ギリOK）
+## ドメイン選択 + noveltyバランス v5
 
-**設計意図:** 3枚の接続カードのうち2枚は「初めて聞いた」事例、1枚は「知ってるかもしれないけど自分の体験と繋がると刺さる」事例。心理系は後者（既知でもOK）、仕組み・異分野は前者（ニッチ必須）。
+**設計転換（v4→v5）:** 固定3アングル（仕組み/人の心/異分野）を廃止。3枚とも「異分野」にして、AIが毎回メモに合った3ドメインを動的に選ぶ。
+
+**新規性バランス:** 3枚中2枚は`niche_required`（初めて聞いた）、1枚は`familiar_ok`（知ってるかもだけどギリOK）。`familiar_ok`枠はランダムで1つ選ぶ。
+
+**多様性担保:** 過去の使用ドメイン+事例タイトルをプロンプトに渡し、被りを防ぐ。3回以上使用されたドメインは回避指示。
 
 ```typescript
-export const SEARCH_ANGLES = {
-  business_model: {
-    label: "仕組みの視点",
-    searchBias: "business service product design system",
-    novelty: "niche_required" as const,
-    queryGuide: `Find a product, service, or everyday system where the same structure appears.
-The example must be something a regular person encounters while shopping, eating, or commuting.
+const DOMAIN_POOL = [
+  "food", "fashion", "music", "sports", "housing",
+  "travel", "books", "movies", "nature", "architecture",
+  "games", "education", "medicine", "agriculture", "craft",
+  "transportation", "hospitality", "retail", "performing_arts", "manufacturing",
+] as const;
 
-NICHE REQUIRED — your query must include:
-- A specific person's job title (wedding DJ, barista, train conductor)
-- OR a specific company/store/brand name
-- OR a specific city or place name
-The user should say "I've never heard of that" when they see the result.
+type NoveltyLevel = "niche_required" | "familiar_ok";
 
-BANNED: Famous examples that educated people already know.
-No TED Talk staples, no pop-science book examples (Gladwell, Kahneman, Ariely),
-no viral internet examples (Twitter 140 chars, Netflix recommendation algorithm).
-"wedding DJ 6000 events dance floor deadlock" → GOOD (niche, specific)
-"subscription model Netflix retention" → BAD (everyone knows Netflix)`,
-  },
-  psychology: {
-    label: "人の心の視点",
-    searchBias: "psychology behavior habit human tendency",
-    novelty: "familiar_ok" as const,
-    queryGuide: `Find a common human behavior or habit that follows the same pattern.
-Prefer EPISODES over THEORY NAMES. "people do X" not "the X effect."
+interface DomainSelection {
+  domain: string;
+  reason: string;
+  novelty: NoveltyLevel;
+}
 
-FAMILIAR OK — well-known examples are acceptable IF:
-- They connect to the user's memo in a way the user hasn't considered
-- They are described through a specific episode, not the theory name
-Even so, prefer lesser-known examples when available.
+async function selectDomainsAndNovelty(
+  input: StructuredMemo,
+  userId: string
+): Promise<DomainSelection[]> {
+  // Step 1: AIにドメイン選択させる（プロンプト⓪）
+  const historySection = await buildHistorySection(userId);
+  const response = await callDomainSelection(input, historySection);
+  const domains: { domain: string; reason: string }[] = response.domains;
 
-STILL BANNED: Direct theory names as titles.
-"the jam experiment" → BAD (theory name as title)
-"スーパーでジャムを6種類にしたら売上10倍" → ACCEPTABLE (episode framing)
-"why nobody claps first at concerts" → ACCEPTABLE (episode framing)`,
-  },
-  cross_domain: {
-    label: "異分野の視点",
-    searchBias: "surprising fact everyday correlation niche",
-    novelty: "niche_required" as const,
-    queryGuide: `Find a surprising everyday fact from a completely different area of life.
-Areas: food, fashion, music, sports, housing, travel, books, movies, nature.
+  // Step 2: noveltyバランスを付与（2/3ニッチ + 1/3ギリOK）
+  const familiarIndex = Math.floor(Math.random() * 3);
+  return domains.map((d, i) => ({
+    ...d,
+    novelty: i === familiarIndex ? "familiar_ok" : "niche_required",
+  }));
+}
+```
 
-NICHE REQUIRED — same rules as business_model:
-- Include a specific proper noun (person, place, brand, event)
-- The user should say "I've never heard of that"
-- Prefer practitioner stories (chef, architect, coach) over academic research
+### パイプライン全体フロー（v5）
 
-"Anthony Bourdain restaurant bathroom quality judge" → GOOD
-"wine label design correlates taste quality" → BAD (too generic, no specific source)
-"Draeger's Market Menlo Park jam display sales" → GOOD (specific store, specific place)`,
-  },
-} as const;
+```
+メモ → P2構造化
+  ↓
+プロンプト⓪: ドメイン選択（3ドメイン）← 過去履歴を入力
+  ↓
+3ドメイン × それぞれ:
+  プロンプト①: クエリ生成（ドメイン+noveltyLevel指定）
+  ↓
+  Gemini Grounding 検索
+  ↓
+  プロンプト②: 接続合成
+  ↓
+  quality_score判定 → score < 0.5ならリトライ（1回）
+  ↓
+接続カード3枚
 ```
 
 ---
 
-## quality_score v2（有名度ペナルティ + 学術調ペナルティ追加）
+## quality_score v3（ドメイン動的選択対応）
 
 ```typescript
 const FAMOUS_PATTERNS = [
@@ -192,29 +274,50 @@ const ACADEMIC_PATTERNS = [
 
 function calcQualityScore(
   result: { title: string; description: string; source_url: string | null; low_quality?: boolean },
-  noveltyLevel: "niche_required" | "familiar_ok"
+  noveltyLevel: NoveltyLevel,
+  recentTitles: string[] // 過去の事例タイトル
 ): number {
   if (result.low_quality) return 0.2;
 
   let score = 0.5;
+
+  // 基本加点
   if (/[A-Z][a-z]+|[ァ-ヴー]{3,}/.test(result.title)) score += 0.15;
   if (/\d{2,}/.test(result.description)) score += 0.1;
   if (result.source_url) score += 0.1;
   if (result.description.length >= 50) score += 0.1;
 
+  // 有名度ペナルティ
   const text = `${result.title} ${result.description}`;
-  const isFamous = FAMOUS_PATTERNS.some(p => p.test(text));
-  if (isFamous) {
+  if (FAMOUS_PATTERNS.some(p => p.test(text))) {
     score -= noveltyLevel === "niche_required" ? 0.4 : 0.1;
   }
 
-  const isAcademic = ACADEMIC_PATTERNS.some(p => p.test(result.description));
-  if (isAcademic) score -= 0.15;
+  // 学術調ペナルティ
+  if (ACADEMIC_PATTERNS.some(p => p.test(result.description))) {
+    score -= 0.15;
+  }
+
+  // 過去事例との重複ペナルティ（タイトル類似度チェック）
+  const isDuplicate = recentTitles.some(t =>
+    result.title.includes(t.slice(0, 6)) || t.includes(result.title.slice(0, 6))
+  );
+  if (isDuplicate) score -= 0.3;
 
   return Math.max(Math.min(score, 1.0), 0.1);
 }
 
 // score < 0.5 → クエリ再生成+再検索（最大1回リトライ）
+```
+
+---
+
+## DDL追記（connectionsテーブル拡張）
+
+```sql
+-- 接続カードの生成元ドメインを記録（多様性担保用）
+ALTER TABLE connections ADD COLUMN IF NOT EXISTS search_domain text;
+-- search_domain: "food", "music", "nature" 等。DOMAIN_POOLの値
 ```
 
 ---
