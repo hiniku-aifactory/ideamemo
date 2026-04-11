@@ -7,7 +7,6 @@ import type { Idea, Connection } from "@/lib/types";
 import type { PersonaId } from "@/lib/personas";
 
 const CONNECTION_COUNT = 3;
-const SEARCH_ANGLES = ["business_model", "psychology", "cross_domain"] as const;
 const MEMO_LIMIT = 20;
 
 // POST -- Record -> Transcribe -> Structure -> Connect x3 (SSE)
@@ -94,60 +93,95 @@ export async function POST(request: NextRequest) {
           mockDb.ideas.insert(idea);
         }
 
-        // 5. 接続発見（常に3件を段階的にSSE送信）
+        // 5. 接続発見（3件をSSE送信）
         const primaryPersona = personas[0] ?? "builder";
-        for (let i = 0; i < CONNECTION_COUNT; i++) {
-          let connResult;
-          if (MOCK_MODE) {
-            connResult = await discoverConnectionSingle(i);
-          } else {
-            const { generateConnection } = await import("@/lib/ai/pipeline");
-            connResult = await generateConnection({
-              summary: structured.summary,
-              keywords: structured.keywords,
-              abstract_principle: structured.abstract_principle,
-              transcript,
-              searchAngle: SEARCH_ANGLES[i],
-              personaId: primaryPersona,
+
+        if (MOCK_MODE) {
+          // モックモード: 1件ずつ段階的にSSE送信
+          for (let i = 0; i < CONNECTION_COUNT; i++) {
+            const connResult = await discoverConnectionSingle(i);
+            if (!connResult) continue;
+
+            const conn: Connection = {
+              id: crypto.randomUUID(),
+              idea_from_id: ideaId,
+              idea_to_id: null,
+              connection_type: connResult.connection_type as Connection["connection_type"],
+              source: "ai",
+              persona_label: connResult.persona_label,
+              reason: connResult.reason,
+              action_suggestion: connResult.action_suggestion,
+              quality_score: connResult.quality_score,
+              external_knowledge_title: connResult.external_knowledge_title,
+              external_knowledge_url: connResult.external_knowledge_url,
+              external_knowledge_summary: connResult.external_knowledge_summary,
+              source_idea_summary: connResult.source_idea_summary,
+              user_note: null,
+              feedback: null,
+              feedback_at: null,
+              bookmarked: false,
+              created_at: now,
+            };
+
+            mockDb.connections.insert(conn);
+
+            send("connection", {
+              id: conn.id,
+              title: connResult.title ?? conn.external_knowledge_title ?? "",
+              description: connResult.description ?? conn.external_knowledge_summary ?? "",
+              source_url: connResult.source_url ?? conn.external_knowledge_url ?? null,
+              source_title: connResult.source_title ?? conn.external_knowledge_title ?? null,
+              quality_score: conn.quality_score,
+              bookmarked: false,
+              connection_type: conn.connection_type,
             });
           }
-          if (!connResult) continue;
-
-          const conn: Connection = {
-            id: crypto.randomUUID(),
-            idea_from_id: ideaId,
-            idea_to_id: null,
-            connection_type: connResult.connection_type as Connection["connection_type"],
-            source: "ai",
-            persona_label: connResult.persona_label,
-            reason: connResult.reason,
-            action_suggestion: connResult.action_suggestion,
-            quality_score: connResult.quality_score,
-            external_knowledge_title: connResult.external_knowledge_title,
-            external_knowledge_url: connResult.external_knowledge_url,
-            external_knowledge_summary: connResult.external_knowledge_summary,
-            source_idea_summary: connResult.source_idea_summary,
-            user_note: null,
-            feedback: null,
-            feedback_at: null,
-            bookmarked: false,
-            created_at: now,
-          };
-
-          if (MOCK_MODE) {
-            mockDb.connections.insert(conn);
-          }
-
-          send("connection", {
-            id: conn.id,
-            title: connResult.title ?? conn.external_knowledge_title ?? "",
-            description: connResult.description ?? conn.external_knowledge_summary ?? "",
-            source_url: connResult.source_url ?? conn.external_knowledge_url ?? null,
-            source_title: connResult.source_title ?? conn.external_knowledge_title ?? null,
-            quality_score: conn.quality_score,
-            bookmarked: false,
-            connection_type: conn.connection_type,
+        } else {
+          // リアルモード: generateConnections で3件まとめて生成 → 順次SSE送信
+          const { generateConnections } = await import("@/lib/ai/pipeline");
+          const results = await generateConnections({
+            summary: structured.summary,
+            keywords: structured.keywords,
+            abstract_principle: structured.abstract_principle,
+            domain: structured.domain ?? "その他",
+            transcript,
+            personaId: primaryPersona,
+            userId,
           });
+
+          for (const result of results) {
+            const conn: Connection = {
+              id: crypto.randomUUID(),
+              idea_from_id: ideaId,
+              idea_to_id: null,
+              connection_type: "external_knowledge",
+              source: "ai",
+              persona_label: result.search_domain,
+              reason: result.description,
+              action_suggestion: "",
+              quality_score: result.quality_score,
+              external_knowledge_title: result.title,
+              external_knowledge_url: result.source_url,
+              external_knowledge_summary: result.description,
+              source_idea_summary: null,
+              user_note: null,
+              feedback: null,
+              feedback_at: null,
+              bookmarked: false,
+              created_at: now,
+            };
+
+            send("connection", {
+              id: conn.id,
+              title: result.title,
+              description: result.description,
+              source_url: result.source_url,
+              source_title: result.source_title,
+              quality_score: result.quality_score,
+              bookmarked: false,
+              connection_type: "external_knowledge",
+            });
+          }
         }
 
         // プロファイル自動更新チェック（非同期、レスポンスをブロックしない）

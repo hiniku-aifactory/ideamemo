@@ -46,6 +46,9 @@ export interface Connection {
   feedback_at: string | null;
   bookmarked: boolean;
   created_at: string;
+  collision_type?: string;    // P5掛け合わせの型: "same"|"opposite"|"cause"|"solve"|"emerge"
+  try_this?: string;          // P5掛け合わせのアクション提案
+  search_domain?: string;     // P3のドメイン選択結果
 }
 
 export interface ChatInsight {
