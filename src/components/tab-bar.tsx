@@ -8,11 +8,11 @@ import { useRecording } from "@/components/recording-context";
 function GridIcon({ active }: { active: boolean }) {
   const color = active ? "#222222" : "#CCCCCC";
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <rect x="2" y="2" width="7" height="7" rx="1" stroke={color} strokeWidth="1" />
-      <rect x="11" y="2" width="7" height="7" rx="1" stroke={color} strokeWidth="1" />
-      <rect x="2" y="11" width="7" height="7" rx="1" stroke={color} strokeWidth="1" />
-      <rect x="11" y="11" width="7" height="7" rx="1" stroke={color} strokeWidth="1" />
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <rect x="2" y="2" width="8" height="8" rx="1" stroke={color} strokeWidth="1" />
+      <rect x="12" y="2" width="8" height="8" rx="1" stroke={color} strokeWidth="1" />
+      <rect x="2" y="12" width="8" height="8" rx="1" stroke={color} strokeWidth="1" />
+      <rect x="12" y="12" width="8" height="8" rx="1" stroke={color} strokeWidth="1" />
     </svg>
   );
 }
@@ -46,12 +46,12 @@ function RecordIcon({ recording }: { recording: boolean }) {
 function GraphIcon({ active }: { active: boolean }) {
   const color = active ? "#222222" : "#CCCCCC";
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <line x1="6" y1="6" x2="14" y2="6" stroke={color} strokeWidth="0.7" />
-      <line x1="14" y1="6" x2="10" y2="15" stroke={color} strokeWidth="0.7" />
-      <circle cx="6" cy="6" r="3" stroke={color} strokeWidth="1" fill="none" />
-      <circle cx="14" cy="6" r="3" stroke={color} strokeWidth="1" fill="none" />
-      <circle cx="10" cy="15" r="3" stroke={color} strokeWidth="1" fill="none" />
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <line x1="7" y1="7" x2="15" y2="7" stroke={color} strokeWidth="0.7" />
+      <line x1="15" y1="7" x2="11" y2="16" stroke={color} strokeWidth="0.7" />
+      <circle cx="7" cy="7" r="3" stroke={color} strokeWidth="1" fill="none" />
+      <circle cx="15" cy="7" r="3" stroke={color} strokeWidth="1" fill="none" />
+      <circle cx="11" cy="16" r="3" stroke={color} strokeWidth="1" fill="none" />
     </svg>
   );
 }

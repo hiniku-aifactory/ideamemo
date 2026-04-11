@@ -34,13 +34,17 @@ export function WaveformBars({ analyser }: Props) {
       let t = 0;
       const el = barsRef.current;
 
+      const barCount = el.children.length;
+      const half = (barCount - 1) / 2;
       function animateMock() {
         t += 0.05;
         const bars = el.children;
         for (let i = 0; i < bars.length; i++) {
+          const distFromCenter = Math.abs(i - half) / half;
+          const centerBoost = 1 - distFromCenter * 0.7;
           const sin = Math.sin(t + i * 0.3) * 0.5 + 0.5;
-          const noise = Math.random() * 0.3;
-          const h = Math.max(2, (sin + noise) * 24);
+          const noise = Math.random() * 0.2;
+          const h = Math.max(2, (sin + noise) * 28 * centerBoost);
           (bars[i] as HTMLElement).style.height = `${h}px`;
         }
         rafRef.current = requestAnimationFrame(animateMock);

@@ -10,41 +10,40 @@ interface AppHeaderProps {
   rightContent?: React.ReactNode;
 }
 
-// 幾何学モチーフ: 同心円 + 十字線
+// 幾何学モチーフ: 同心円 + 十字線（30px）
 function GeometricLogo() {
   return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-      <circle cx="14" cy="14" r="13" stroke="#E0E0E0" strokeWidth="0.5" />
-      <circle cx="14" cy="14" r="8" stroke="#E0E0E0" strokeWidth="0.5" />
-      <circle cx="14" cy="14" r="3" stroke="#E0E0E0" strokeWidth="0.5" />
-      <line x1="14" y1="0" x2="14" y2="28" stroke="#E0E0E0" strokeWidth="0.5" />
-      <line x1="0" y1="14" x2="28" y2="14" stroke="#E0E0E0" strokeWidth="0.5" />
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+      <circle cx="15" cy="15" r="14" stroke="#E0E0E0" strokeWidth="0.5" />
+      <circle cx="15" cy="15" r="9" stroke="#E0E0E0" strokeWidth="0.5" />
+      <circle cx="15" cy="15" r="4" stroke="#E0E0E0" strokeWidth="0.5" />
+      <line x1="15" y1="0" x2="15" y2="30" stroke="#E0E0E0" strokeWidth="0.5" />
+      <line x1="0" y1="15" x2="30" y2="15" stroke="#E0E0E0" strokeWidth="0.5" />
     </svg>
   );
 }
 
-// ← 戻るアイコン
+// ← 戻るアイコン（22px）
 function BackArrow() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <path d="M14 4L8 11L14 18" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-// ハンバーガーメニュー
+// ハンバーガーメニュー（22px）
 function MenuIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-      <line x1="3" y1="5" x2="17" y2="5" stroke="#BBBBBB" strokeWidth="1" />
-      <line x1="3" y1="10" x2="17" y2="10" stroke="#BBBBBB" strokeWidth="1" />
-      <line x1="3" y1="15" x2="17" y2="15" stroke="#BBBBBB" strokeWidth="1" />
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <line x1="3" y1="6" x2="19" y2="6" stroke="#BBBBBB" strokeWidth="1" />
+      <line x1="3" y1="11" x2="19" y2="11" stroke="#BBBBBB" strokeWidth="1" />
+      <line x1="3" y1="16" x2="19" y2="16" stroke="#BBBBBB" strokeWidth="1" />
     </svg>
   );
 }
 
 const MENU_ITEMS = [
-  { label: "Folders", href: "/folders" },
   { label: "Bookmarks", href: "/bookmarks" },
   { label: "Settings", href: "/settings" },
   { label: "About", href: "/about" },
@@ -57,16 +56,24 @@ export function AppHeader({ showBack = false, title, rightContent }: AppHeaderPr
   return (
     <header
       className="flex-none flex items-center justify-between px-5 pb-3"
-      style={{ paddingTop: "calc(12px + env(safe-area-inset-top))" }}
+      style={{
+        paddingTop: "calc(12px + env(safe-area-inset-top))",
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        background: "var(--bg-primary)",
+      }}
     >
-      {/* 左: 戻る or ロゴ */}
+      {/* 左: 戻る or ロゴ（ロゴタップで / に遷移） */}
       <div className="flex items-center gap-2">
         {showBack ? (
           <button onClick={() => router.back()} style={{ color: "var(--text-secondary)" }}>
             <BackArrow />
           </button>
         ) : (
-          <GeometricLogo />
+          <button onClick={() => router.push("/")} aria-label="ホームに戻る">
+            <GeometricLogo />
+          </button>
         )}
       </div>
 
