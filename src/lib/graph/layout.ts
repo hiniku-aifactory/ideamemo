@@ -1,10 +1,13 @@
 import type { GraphNode, TagCluster } from "./types";
 
-const IDEA_DISTANCE = 140;
-const KNOWLEDGE_DISTANCE = 100;
-const BASE_R = 22;
-const TAG_CLUSTER_DISTANCE = 160;
+// --- 定数 ---
+const CLUSTER_DISTANCE = 280;   // クラスタ中心間の距離（v5: 160 → 拡大）
+const NODE_DISTANCE = 80;       // クラスタ内ノード間の配置距離
+const KNOWLEDGE_DISTANCE = 50;  // 外部知識のノードからの距離
+const BASE_R = 22;              // ノードの基本半径
 
+// --- クラスタ配置 ---
+// 決定論的な幾何学配置。force simulation は使わない。
 export function layoutTagClusters(
   tags: TagCluster[],
   centerX: number,
@@ -14,70 +17,70 @@ export function layoutTagClusters(
   return tags.map((tag, i) => {
     const angleDeg = -90 + (360 / tags.length) * i;
     const rad = (angleDeg * Math.PI) / 180;
-    const dist = tags.length <= 3 ? TAG_CLUSTER_DISTANCE * 0.8 : TAG_CLUSTER_DISTANCE;
+    const dist = tags.length <= 3 ? CLUSTER_DISTANCE * 0.8 : CLUSTER_DISTANCE;
     return {
       ...tag,
       x: centerX + dist * Math.cos(rad),
       y: centerY + dist * Math.sin(rad),
-      r: Math.max(40, 30 + tag.nodeCount * 6),
+      r: Math.max(60, 40 + tag.nodeCount * 12), // v5より大きめ（ノードが中に入る）
     };
   });
 }
 
-export function layoutSatellites(
-  centerX: number,
-  centerY: number,
+// --- クラスタ内ノード配置 ---
+// クラスタ中心から放射状に全ノードを配置
+export function layoutNodesInCluster(
+  clusterX: number,
+  clusterY: number,
   count: number,
-  distance: number,
-  startAngleDeg: number = -90
 ): { x: number; y: number }[] {
   if (count === 0) return [];
+  if (count === 1) return [{ x: clusterX, y: clusterY }];
   return Array.from({ length: count }, (_, i) => {
-    const angleDeg = startAngleDeg + (360 / count) * i;
+    const angleDeg = -90 + (360 / count) * i;
     const rad = (angleDeg * Math.PI) / 180;
     return {
-      x: centerX + distance * Math.cos(rad),
-      y: centerY + distance * Math.sin(rad),
+      x: clusterX + NODE_DISTANCE * Math.cos(rad),
+      y: clusterY + NODE_DISTANCE * Math.sin(rad),
     };
   });
 }
 
-export function layoutWithCollisionAvoidance(
-  centerX: number,
-  centerY: number,
+// --- 外部知識配置 ---
+// フォーカスされたノードの周囲に展開
+export function layoutKnowledge(
+  nodeX: number,
+  nodeY: number,
   count: number,
-  distance: number,
-  existingNodes: GraphNode[]
+  existingNodes: { x: number; y: number }[],
 ): { x: number; y: number }[] {
-  const minSeparation = BASE_R * 3;
-
+  if (count === 0) return [];
+  const minSep = BASE_R * 2.5;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const startAngle = -90 + attempt * 30;
-    const extraDist = attempt * 20;
-    const positions = layoutSatellites(
-      centerX,
-      centerY,
-      count,
-      distance + extraDist,
-      startAngle
-    );
-
+    const startAngle = -90 + attempt * 45;
+    const dist = KNOWLEDGE_DISTANCE + attempt * 15;
+    const positions = Array.from({ length: count }, (_, i) => {
+      const angleDeg = startAngle + (360 / count) * i;
+      const rad = (angleDeg * Math.PI) / 180;
+      return { x: nodeX + dist * Math.cos(rad), y: nodeY + dist * Math.sin(rad) };
+    });
     const hasCollision = positions.some((pos) =>
-      existingNodes.some((existing) => {
-        const dx = pos.x - existing.x;
-        const dy = pos.y - existing.y;
-        return Math.hypot(dx, dy) < minSeparation;
-      })
+      existingNodes.some((e) => Math.hypot(pos.x - e.x, pos.y - e.y) < minSep)
     );
-
     if (!hasCollision) return positions;
   }
-
-  return layoutSatellites(centerX, centerY, count, distance + 60, -90);
+  return Array.from({ length: count }, (_, i) => {
+    const angleDeg = -90 + (360 / count) * i;
+    const rad = (angleDeg * Math.PI) / 180;
+    return {
+      x: nodeX + (KNOWLEDGE_DISTANCE + 40) * Math.cos(rad),
+      y: nodeY + (KNOWLEDGE_DISTANCE + 40) * Math.sin(rad),
+    };
+  });
 }
 
 export function calcNodeRadius(connCount: number): number {
   return Math.min(28, BASE_R + connCount * 2);
 }
 
-export { IDEA_DISTANCE, KNOWLEDGE_DISTANCE, BASE_R };
+export { CLUSTER_DISTANCE, NODE_DISTANCE, KNOWLEDGE_DISTANCE, BASE_R };
