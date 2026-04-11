@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { ContextHeader } from "@/components/chat/context-header";
+import { SuggestButtons } from "@/components/chat/suggest-buttons";
 import { mockDb } from "@/lib/mock/db";
 import type { ChatSession, ChatMessage } from "@/lib/mock/db";
 import type { ChatInsight, Idea, Connection } from "@/lib/types";
@@ -78,6 +79,9 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
   const [insights, setInsights] = useState<ChatInsight[]>([]);
   const [insightLoading, setInsightLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [suggestDismissed, setSuggestDismissed] = useState(false);
+  const [followUpShown, setFollowUpShown] = useState(false);
+  const [followUpDismissed, setFollowUpDismissed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const insightFetchedRef = useRef(false);
 
@@ -203,6 +207,14 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
     }
   }, [messages, currentSessionId, insights.length, fetchInsights]);
 
+  // フォローアップサジェスト表示
+  useEffect(() => {
+    const assistantCount = messages.filter((m) => m.role === "assistant").length;
+    if (assistantCount >= 3 && !followUpShown && !followUpDismissed) {
+      setFollowUpShown(true);
+    }
+  }, [messages, followUpShown, followUpDismissed]);
+
   const handleAddToGraph = useCallback(
     async (insight: ChatInsight) => {
       const session = currentSessionId ? mockDb.chatSessions.get(currentSessionId) : null;
@@ -267,80 +279,45 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
     );
   }, []);
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || sending) return;
-
-    const userMessage = input.trim();
-    setInput("");
+  const sendMessage = useCallback(async (text: string) => {
+    if (!text.trim() || sending) return;
     setSending(true);
     setStreamingContent("");
-
-    // ユーザーメッセージをUIに即追加
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        session_id: currentSessionId ?? "",
-        role: "user",
-        content: userMessage,
-        created_at: new Date().toISOString(),
-      },
-    ]);
-
+    setMessages((prev) => [...prev, {
+      id: crypto.randomUUID(), session_id: currentSessionId ?? "",
+      role: "user" as const, content: text, created_at: new Date().toISOString(),
+    }]);
     try {
       const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: currentSessionId,
-          message: userMessage,
-          context: connectionId ? { connectionId } : undefined,
-        }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: currentSessionId, message: text,
+          context: connectionId ? { connectionId } : undefined }),
       });
-
       if (!response.body) return;
-
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
         const events = buffer.split("\n\n");
         buffer = events.pop() || "";
-
         for (const raw of events) {
           const eventMatch = raw.match(/event: (\w+)/);
           const dataMatch = raw.match(/data: ([\s\S]+)/);
           if (!eventMatch || !dataMatch) continue;
-
           const event = eventMatch[1];
           const data = JSON.parse(dataMatch[1]);
-
-          if (event === "session") {
-            setCurrentSessionId(data.sessionId);
-          } else if (event === "delta") {
-            setStreamingContent(data.content);
-          } else if (event === "done") {
-            // ストリーミング完了: 最終テキストをメッセージに追加
+          if (event === "session") { setCurrentSessionId(data.sessionId); }
+          else if (event === "delta") { setStreamingContent(data.content); }
+          else if (event === "done") {
             setMessages((prev) => {
               const lastStreamed = mockDb.chatMessages
-                .listBySession(currentSessionId ?? "")
-                .filter((m) => m.role === "assistant")
-                .pop();
+                .listBySession(currentSessionId ?? "").filter((m) => m.role === "assistant").pop();
               if (lastStreamed) {
-                return [
-                  ...prev,
-                  {
-                    id: lastStreamed.id,
-                    session_id: currentSessionId ?? "",
-                    role: "assistant" as const,
-                    content: lastStreamed.content,
-                    created_at: lastStreamed.created_at,
-                  },
-                ];
+                return [...prev, { id: lastStreamed.id, session_id: currentSessionId ?? "",
+                  role: "assistant" as const, content: lastStreamed.content, created_at: lastStreamed.created_at }];
               }
               return prev;
             });
@@ -348,12 +325,27 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
           }
         }
       }
-    } catch (err) {
-      console.error("Chat send error:", err);
-    } finally {
-      setSending(false);
-    }
-  }, [input, sending, currentSessionId, connectionId]);
+    } catch (err) { console.error("Chat send error:", err); }
+    finally { setSending(false); }
+  }, [sending, currentSessionId, connectionId]);
+
+  const handleSend = useCallback(() => {
+    if (!input.trim()) return;
+    const text = input.trim();
+    setInput("");
+    sendMessage(text);
+  }, [input, sendMessage]);
+
+  const handleSuggestSelect = useCallback((text: string) => {
+    setSuggestDismissed(true);
+    sendMessage(text);
+  }, [sendMessage]);
+
+  const handleFollowUpSelect = useCallback((text: string) => {
+    setFollowUpDismissed(true);
+    setFollowUpShown(false);
+    sendMessage(text);
+  }, [sendMessage]);
 
   return (
     <div className="flex flex-col h-full">
@@ -407,6 +399,16 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--text-muted)", animationDelay: "0.2s" }} />
             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--text-muted)", animationDelay: "0.4s" }} />
           </div>
+        )}
+
+        {/* 初期サジェスト */}
+        {messages.length === 0 && connectionId && !suggestDismissed && (
+          <SuggestButtons type="initial" onSelect={handleSuggestSelect} />
+        )}
+
+        {/* フォローアップサジェスト */}
+        {followUpShown && !followUpDismissed && !sending && (
+          <SuggestButtons type="followUp" onSelect={handleFollowUpSelect} />
         )}
       </div>
 
