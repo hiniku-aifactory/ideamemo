@@ -322,9 +322,12 @@ export async function POST(request: NextRequest) {
 
               // contextからsystem prompt構築（inlineContextをフォールバックとして使用）
               const chatContext = buildChatContext(context?.connectionId, inlineContext);
+              if (!chatContext) {
+                console.error("[Chat] Context missing — connectionId:", context?.connectionId, "inlineContext:", !!inlineContext, "mockDb conn:", context?.connectionId ? !!mockDb.connections.get(context.connectionId) : "N/A");
+              }
               const systemPrompt = chatContext
                 ? buildDeepDiveSystemPrompt(chatContext, currentTurn)
-                : `あなたはユーザーの気づきを掘り下げる対話相手。落ち着いた知性を感じさせる語り口で、だ・である調で応答する。1応答は3-5文。箇条書き禁止。現在 ${currentTurn}/5 ターン目。`;
+                : `あなたはユーザーの気づきを掘り下げる対話相手。落ち着いた知性を感じさせる語り口で、だ・である調で応答する。1応答は3-5文。箇条書き禁止。現在 ${currentTurn}/5 ターン目。ユーザーのメモの内容がわからない場合は「どのメモについて話しているか教えてほしい」と聞いてよい。`;
 
               // 検索が必要か判定
               let extraContext = "";
