@@ -177,7 +177,7 @@ ${persona.promptInstruction}${profileSection}${fbSection}`;
 
   // プロンプト⓪: ドメイン選択
   const domainRes = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 300,
     system: DOMAIN_SELECTION_SYSTEM,
     messages: [
@@ -222,7 +222,7 @@ Output JSON only:
       }> => {
         // プロンプト①: クエリ生成
         const queryRes = await anthropic.messages.create({
-          model: "claude-sonnet-4-6",
+          model: "claude-haiku-4-5-20251001",
           max_tokens: 100,
           system: QUERY_GEN_SYSTEM,
           messages: [

@@ -101,6 +101,15 @@ const INITIAL_MESSAGE_SYSTEM = `初期メッセージを生成してください
   ]
 }`;
 
+// JSON抽出ヘルパー
+function extractJSON(text: string): string {
+  let cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end > start) cleaned = cleaned.slice(start, end + 1);
+  return cleaned;
+}
+
 // メッセージ内容から検索が必要か判定
 function shouldSearch(message: string, currentTurn: number): boolean {
   if (currentTurn >= MAX_TURNS) return false;
@@ -208,39 +217,40 @@ export async function POST(request: NextRequest) {
             } else {
               // リアルモード: P4初期メッセージ生成
               const chatContext = buildChatContext(context.connectionId, inlineContext);
+              let initialContent = MOCK_INITIAL_MESSAGE;
               if (chatContext && process.env.ANTHROPIC_API_KEY) {
-                const { default: Anthropic } = await import("@anthropic-ai/sdk");
-                const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-                const initRes = await anthropic.messages.create({
-                  model: "claude-sonnet-4-6",
-                  max_tokens: 400,
-                  system: INITIAL_MESSAGE_SYSTEM,
-                  messages: [
-                    {
-                      role: "user",
-                      content: `元メモ: ${chatContext.memo.summary}\n本質: ${chatContext.memo.abstract_principle}\n問い: ${chatContext.memo.latent_question}\n外部知識: ${chatContext.connection.title}\n接続内容: ${chatContext.connection.description}`,
-                    },
-                  ],
-                });
-                const initText = (initRes.content[0] as { type: string; text: string }).text.trim();
-                const initJson = initText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-                const initParsed = JSON.parse(initJson) as {
-                  greeting: string;
-                  questions: { type: string; text: string }[];
-                };
-                const formatted = `${initParsed.greeting}\n\n${initParsed.questions.map((q) => `・${q.text}`).join("\n")}`;
-
-                mockDb.chatMessages.insert({
-                  id: crypto.randomUUID(),
-                  session_id: currentSessionId,
-                  role: "assistant",
-                  content: formatted,
-                  created_at: now,
-                });
-                send("message", { role: "assistant", content: formatted });
-              } else {
-                send("message", { role: "assistant", content: MOCK_INITIAL_MESSAGE });
+                try {
+                  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+                  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+                  const initRes = await anthropic.messages.create({
+                    model: "claude-sonnet-4-6",
+                    max_tokens: 400,
+                    system: INITIAL_MESSAGE_SYSTEM,
+                    messages: [
+                      {
+                        role: "user",
+                        content: `元メモ: ${chatContext.memo.summary}\n本質: ${chatContext.memo.abstract_principle}\n問い: ${chatContext.memo.latent_question}\n外部知識: ${chatContext.connection.title}\n接続内容: ${chatContext.connection.description}`,
+                      },
+                    ],
+                  });
+                  const initText = (initRes.content[0] as { type: string; text: string }).text.trim();
+                  const initParsed = JSON.parse(extractJSON(initText)) as {
+                    greeting: string;
+                    questions: { type: string; text: string }[];
+                  };
+                  initialContent = `${initParsed.greeting}\n\n${initParsed.questions.map((q) => `・${q.text}`).join("\n")}`;
+                } catch (e) {
+                  console.error("[Chat] Initial message generation failed:", e);
+                }
               }
+              mockDb.chatMessages.insert({
+                id: crypto.randomUUID(),
+                session_id: currentSessionId,
+                role: "assistant",
+                content: initialContent,
+                created_at: now,
+              });
+              send("message", { role: "assistant", content: initialContent });
             }
           }
 

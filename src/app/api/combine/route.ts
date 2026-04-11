@@ -119,8 +119,10 @@ export async function POST(request: NextRequest) {
       });
 
       const text = (response.content[0] as { type: string; text: string }).text.trim();
-      const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const parsed = JSON.parse(jsonStr);
+      const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      const jsonStart = cleaned.indexOf("{");
+      const jsonEnd = cleaned.lastIndexOf("}");
+      const parsed = JSON.parse(jsonStart !== -1 && jsonEnd > jsonStart ? cleaned.slice(jsonStart, jsonEnd + 1) : cleaned);
 
       result = {
         reason: parsed.connection_reason ?? "",
