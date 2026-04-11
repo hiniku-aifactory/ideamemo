@@ -44,12 +44,14 @@ REVISION_SPEC_v4.md で以下を実行済み:
 ## ビルド順序（v5）
 
 REVISION_SPEC_v5.md で以下を実行:
-- §0: グラフ — カードリスト画面（graph/page.tsx 全面書き換え）
-- §1: 拡張グラフビュー（graph/explore/page.tsx + explore-view.tsx + layout.ts + types.ts 新規）
-- §2: 詳細パネル + combine（detail-panel.tsx + combine-panel.tsx 新規）
-- §3: チャットコンテキストヘッダー（context-header.tsx 新規 + chat/page.tsx 変更）
-- §4: サジェスト質問ボタン（suggest-buttons.tsx 新規 + chat/page.tsx 変更）
-- §5: ホーム→拡張グラフ遷移（page.tsx 変更）
+- §0: types拡張（graph_label, tags）+ seed data
+- §1-§4: グラフ全面書き換え（タグクラスタ→ノード展開→拡張グラフ+詳細パネル+combine）
+- §5: パンくず+ガイドライン適用
+- §6: チャットコンテキストヘッダー
+- §7: サジェスト質問ボタン
+- §8: メモ詳細 — 全接続カードに深掘りボタン
+- §9: 録音結果画面刷新（具体→抽象可視化）
+- §10: ホーム — タグクラスタプレビュー
 
 ## タスク仕様書
 
