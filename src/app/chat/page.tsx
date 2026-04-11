@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { mockDb } from "@/lib/mock/db";
 import type { ChatSession, ChatMessage } from "@/lib/mock/db";
+import type { ChatInsight, Idea, Connection } from "@/lib/types";
 
 // セッション一覧ビュー
 function SessionList({ onSelect }: { onSelect: (id: string) => void }) {
@@ -72,7 +73,11 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
   const [streamingContent, setStreamingContent] = useState("");
   const [contextExpanded, setContextExpanded] = useState(false);
   const [contextSummary, setContextSummary] = useState<string | null>(null);
+  const [insights, setInsights] = useState<ChatInsight[]>([]);
+  const [insightLoading, setInsightLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const insightFetchedRef = useRef(false);
 
   // 初期化
   useEffect(() => {
@@ -156,6 +161,97 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
     } catch (err) {
       console.error("Chat init error:", err);
     }
+  }, []);
+
+  const fetchInsights = useCallback(async (sid: string) => {
+    if (insightFetchedRef.current || insightLoading) return;
+    insightFetchedRef.current = true;
+    setInsightLoading(true);
+    try {
+      const res = await fetch("/api/chat/extract-insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sid }),
+      });
+      const data = await res.json() as { insights: ChatInsight[] };
+      setInsights(data.insights || []);
+    } catch (err) {
+      console.error("extract-insights error:", err);
+    } finally {
+      setInsightLoading(false);
+    }
+  }, [insightLoading]);
+
+  // assistant発言が6回に達したら自動抽出
+  useEffect(() => {
+    const assistantCount = messages.filter((m) => m.role === "assistant").length;
+    if (assistantCount >= 6 && currentSessionId && !insightFetchedRef.current && insights.length === 0) {
+      fetchInsights(currentSessionId);
+    }
+  }, [messages, currentSessionId, insights.length, fetchInsights]);
+
+  const handleAddToGraph = useCallback(
+    async (insight: ChatInsight) => {
+      const session = currentSessionId ? mockDb.chatSessions.get(currentSessionId) : null;
+      const parentIdeaId = session?.idea_id ?? null;
+
+      const newIdea: Idea = {
+        id: `idea-insight-${Date.now()}`,
+        user_id: "mock-user-001",
+        transcript: insight.full_text,
+        summary: insight.summary,
+        keywords: insight.keywords,
+        abstract_principle: insight.full_text,
+        latent_question: "",
+        domain: "その他",
+        audio_url: null,
+        folder_id: null,
+        folder_name: null,
+        source: "chat_insight",
+        parent_session_id: currentSessionId ?? null,
+        created_at: new Date().toISOString(),
+      };
+      mockDb.ideas.insert(newIdea);
+
+      if (parentIdeaId) {
+        const newConn: Connection = {
+          id: `conn-derived-${Date.now()}`,
+          idea_from_id: parentIdeaId,
+          idea_to_id: newIdea.id,
+          connection_type: "chat_derived",
+          source: "ai",
+          persona_label: null,
+          reason: insight.full_text,
+          action_suggestion: "",
+          quality_score: null,
+          external_knowledge_title: null,
+          external_knowledge_url: null,
+          external_knowledge_summary: null,
+          source_idea_summary: null,
+          user_note: null,
+          feedback: null,
+          feedback_at: null,
+          bookmarked: false,
+          created_at: new Date().toISOString(),
+        };
+        mockDb.connections.insert(newConn);
+      }
+
+      // insight status を accepted に
+      setInsights((prev) =>
+        prev.map((i) => (i.id === insight.id ? { ...i, status: "accepted" as const } : i))
+      );
+
+      setToast("グラフに追加しました");
+      setTimeout(() => setToast(null), 1500);
+    },
+    [currentSessionId]
+  );
+
+  const handleDismissInsight = useCallback((id: string) => {
+    setInsights((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, status: "dismissed" as const } : i))
+    );
   }, []);
 
   const handleSend = useCallback(async () => {
@@ -248,6 +344,19 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
 
   return (
     <div className="flex flex-col h-full">
+      {/* トースト */}
+      {toast && (
+        <div
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full text-[12px] z-50"
+          style={{
+            background: "var(--text-primary)",
+            color: "var(--bg-primary)",
+          }}
+        >
+          {toast}
+        </div>
+      )}
+
       {/* コンテキストバー */}
       {contextSummary && (
         <div
@@ -317,12 +426,69 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
         )}
       </div>
 
+      {/* 気づき候補カード */}
+      {insights.filter((i) => i.status === "suggested").length > 0 && (
+        <div className="px-4 pb-3 animate-page-enter">
+          <p className="text-[13px] mb-2" style={{ color: "var(--text-primary)" }}>
+            新しい気づき
+          </p>
+          <div className="space-y-2">
+            {insights
+              .filter((i) => i.status === "suggested")
+              .map((insight) => (
+                <div
+                  key={insight.id}
+                  className="rounded-lg p-3"
+                  style={{
+                    background: "var(--bg-secondary)",
+                    border: "0.5px solid var(--border-light)",
+                  }}
+                >
+                  <p className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                    {insight.summary}
+                  </p>
+                  <p className="text-[12px] mt-1" style={{ color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                    {insight.full_text}
+                  </p>
+                  <div className="flex items-center justify-end gap-4 mt-2">
+                    <button
+                      onClick={() => handleAddToGraph(insight)}
+                      className="text-[11px]"
+                      style={{ color: "var(--accent)" }}
+                    >
+                      ノードに追加
+                    </button>
+                    <button
+                      onClick={() => handleDismissInsight(insight.id)}
+                      className="text-[11px]"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* 入力フィールド */}
       <div className="px-4 pb-4" style={{ paddingBottom: "calc(16px + env(safe-area-inset-bottom, 0px))" }}>
         <div
           className="flex items-center gap-2 rounded-3xl px-4 py-2.5"
           style={{ background: "var(--bg-tertiary)" }}
         >
+          {/* まとめるボタン */}
+          {messages.filter((m) => m.role === "assistant").length >= 6 && currentSessionId && (
+            <button
+              onClick={() => fetchInsights(currentSessionId)}
+              className="text-[11px] flex-none"
+              style={{ color: "var(--text-muted)" }}
+              disabled={insightLoading}
+            >
+              {insightLoading ? "..." : "まとめる"}
+            </button>
+          )}
           <input
             type="text"
             value={input}
