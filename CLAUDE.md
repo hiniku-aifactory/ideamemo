@@ -41,6 +41,16 @@ REVISION_SPEC_v4.md で以下を実行済み:
 - §7: 深掘りチャット気づき抽出
 - §8: FB反映（波形+ヘッダー+フォルダ削除+タブ3化）
 
+## ビルド順序（v5）
+
+REVISION_SPEC_v5.md で以下を実行:
+- §0: グラフ — カードリスト画面（graph/page.tsx 全面書き換え）
+- §1: 拡張グラフビュー（graph/explore/page.tsx + explore-view.tsx + layout.ts + types.ts 新規）
+- §2: 詳細パネル + combine（detail-panel.tsx + combine-panel.tsx 新規）
+- §3: チャットコンテキストヘッダー（context-header.tsx 新規 + chat/page.tsx 変更）
+- §4: サジェスト質問ボタン（suggest-buttons.tsx 新規 + chat/page.tsx 変更）
+- §5: ホーム→拡張グラフ遷移（page.tsx 変更）
+
 ## タスク仕様書
 
 `../product-factory/products/ideamemo/tasks/` に各フローの仕様書がある。
@@ -48,6 +58,7 @@ REVISION_SPEC_v4.md で以下を実行済み:
 - `v1_product_spec.md` (docs/) — v1全体仕様書（設計判断の根拠）
 - `SPEC_GRAPH_HOME_v3.md` (docs/) — グラフ詳細+深掘り転記+ホーム再設計の設計根拠
 - `REVISION_SPEC_v4.md` (docs/) — 実行仕様書（v4）
+- `REVISION_SPEC_v5.md` (docs/) — 実行仕様書（v5: 拡張グラフ+チャット改善）
 - `f1_v2_pipeline.md` — F1v2: ペルソナ別接続+Brave Search+FB
 - `f5_chat.md` — F5: 深掘りチャット
 - `f4_graph.md` — F4: グラフ+掛け合わせ
