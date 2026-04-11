@@ -418,7 +418,7 @@ export default function RecordPage() {
       )}
 
       {/* 録音エリア — 常時表示 */}
-      {(phase === "idle" || phase === "recording") ? (
+      {(phase === "idle" || phase === "recording") && (
         <div className="flex-1 flex flex-col items-center justify-center gap-6">
           {micError && (
             <p className="text-[13px] px-6 text-center" style={{ color: "var(--error)" }}>
@@ -484,16 +484,6 @@ export default function RecordPage() {
               {String(elapsed % 60).padStart(2, "0")}
             </p>
           </div>
-        </div>
-      ) : (
-        <div className="flex justify-center py-4">
-          <button
-            onClick={handleTap}
-            className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ border: "1px solid var(--border)", background: "var(--bg-secondary)" }}
-          >
-            <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#222222" }} />
-          </button>
         </div>
       )}
 
