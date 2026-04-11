@@ -139,9 +139,9 @@ export async function POST(request: NextRequest) {
             });
           }
         } else {
-          // リアルモード: generateConnections で3件まとめて生成 → 順次SSE送信
-          const { generateConnections } = await import("@/lib/ai/pipeline");
-          const results = await generateConnections({
+          // リアルモード: ドメイン選択 → 1件ずつ生成+即SSE送信
+          const { selectDomains, generateSingleConnection } = await import("@/lib/ai/pipeline");
+          const domains = await selectDomains({
             summary: structured.summary,
             keywords: structured.keywords,
             abstract_principle: structured.abstract_principle,
@@ -151,7 +151,21 @@ export async function POST(request: NextRequest) {
             userId,
           });
 
-          for (const result of results) {
+          for (const { domain, novelty } of domains) {
+            try {
+              const result = await generateSingleConnection(
+                {
+                  summary: structured.summary,
+                  keywords: structured.keywords,
+                  abstract_principle: structured.abstract_principle,
+                  domain: structured.domain ?? "その他",
+                  transcript,
+                  personaId: primaryPersona,
+                  userId,
+                },
+                domain,
+                novelty,
+              );
             const conn: Connection = {
               id: crypto.randomUUID(),
               idea_from_id: ideaId,
@@ -186,6 +200,9 @@ export async function POST(request: NextRequest) {
               bookmarked: false,
               connection_type: "external_knowledge",
             });
+            } catch (e) {
+              console.error(`[A01] Connection generation failed for domain ${domain}:`, e);
+            }
           }
         }
 

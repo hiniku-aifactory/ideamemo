@@ -47,7 +47,17 @@ export default function RecordPage() {
   const [micError, setMicError] = useState<string | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
 
-  const [randomQuote] = useState(() => quotes[Math.floor(Math.random() * quotes.length)]);
+  const [currentQuote, setCurrentQuote] = useState(() => quotes[Math.floor(Math.random() * quotes.length)]);
+
+  // 名言を5秒ごとにローテーション
+  useEffect(() => {
+    if (phase !== "structured" && phase !== "connection") return;
+    if (showConnectionCount > 0) return; // カードが出始めたら停止
+    const timer = setInterval(() => {
+      setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [phase, showConnectionCount]);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -223,10 +233,15 @@ export default function RecordPage() {
   }, []);
 
   const handleTap = () => {
-    if (phase === "idle" || phase === "done" || phase === "error") {
-      startRecording();
-    } else if (phase === "recording") {
+    if (phase === "recording") {
       stopRecording();
+    } else {
+      // どのフェーズからでも新規録音開始
+      setPhase("idle");
+      setResult({});
+      setConnections([]);
+      setShowConnectionCount(0);
+      startRecording();
     }
   };
 
@@ -317,10 +332,10 @@ export default function RecordPage() {
             <section className="animate-page-enter text-center py-6">
               <p className="text-[13px] italic"
                 style={{ color: "var(--text-secondary)", lineHeight: 1.8 }}>
-                &ldquo;{randomQuote.ja || randomQuote.text}&rdquo;
+                &ldquo;{currentQuote.ja || currentQuote.text}&rdquo;
               </p>
               <p className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
-                — {randomQuote.author}
+                — {currentQuote.author}
               </p>
               <div className="flex justify-center gap-1 mt-4">
                 <span className="w-1.5 h-1.5 rounded-full animate-pulse"
@@ -390,7 +405,7 @@ export default function RecordPage() {
                 </button>
               ) : (
                 <button
-                  onClick={() => { setPhase("idle"); setResult({}); startRecording(); }}
+                  onClick={() => { setPhase("idle"); setResult({}); setConnections([]); setShowConnectionCount(0); startRecording(); }}
                   className="px-4 py-2 rounded-lg text-[13px]"
                   style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
                 >
@@ -402,8 +417,8 @@ export default function RecordPage() {
         </div>
       )}
 
-      {/* 録音エリア */}
-      {!isProcessing && (
+      {/* 録音エリア — 常時表示 */}
+      {(phase === "idle" || phase === "recording") ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-6">
           {micError && (
             <p className="text-[13px] px-6 text-center" style={{ color: "var(--error)" }}>
@@ -469,6 +484,16 @@ export default function RecordPage() {
               {String(elapsed % 60).padStart(2, "0")}
             </p>
           </div>
+        </div>
+      ) : (
+        <div className="flex justify-center py-4">
+          <button
+            onClick={handleTap}
+            className="w-12 h-12 rounded-full flex items-center justify-center"
+            style={{ border: "1px solid var(--border)", background: "var(--bg-secondary)" }}
+          >
+            <div style={{ width: 16, height: 16, borderRadius: "50%", background: "#222222" }} />
+          </button>
         </div>
       )}
 

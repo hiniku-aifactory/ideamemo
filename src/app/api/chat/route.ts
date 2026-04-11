@@ -33,7 +33,7 @@ interface InlineChatContext {
 
 // P4 systemプロンプト（ターン別振る舞い込み）
 function buildDeepDiveSystemPrompt(context: ChatContext, currentTurn: number): string {
-  return `あなたはユーザーの気づきと外部知識の接続を一緒に掘り下げる相棒。
+  return `あなたはユーザーの気づきと外部知識の接続を一緒に掘り下げる対話相手。
 
 # 今回の接続
 元メモ: ${context.memo.summary}
@@ -43,10 +43,11 @@ function buildDeepDiveSystemPrompt(context: ChatContext, currentTurn: number): s
 接続内容: ${context.connection.description}
 
 # 口調
-- 知的な友達が飲みながら話す感じ。論文調禁止
+- 落ち着いた知性を感じさせる語り口。冷静で品のある話し方
 - 断定調。「〜かもしれません」「〜と考えられます」禁止
 - 1応答は3-5文。長くても7文まで。箇条書き禁止
-- 禁止ワード: 「原理」「メカニズム」「示唆する」「提唱した」「いい質問ですね」「おっしゃる通り」
+- 「です・ます」は使わない。だ・である調
+- 禁止ワード: 「原理」「メカニズム」「示唆する」「提唱した」「いい質問ですね」「おっしゃる通り」「面白いのが」「知ってる？」「ヤバい」
 
 # ターン管理
 このチャットは最大5ターン（ユーザー発言5回）。
@@ -72,10 +73,10 @@ function buildDeepDiveSystemPrompt(context: ChatContext, currentTurn: number): s
   「──\nこのチャットはここまで。新しいメモを録って、また別の角度から掘ってみよう。」
 
 # 品質チェック（毎ターン出力前に自問）
-1. この1文を友達にLINEで送れるか？ → 送れないなら硬すぎる
+1. 読んだ人が静かに頷くか？ → 頷かないなら接続が弱い
 2. 事実か意見か？ → 事実ベースで話す。意見は「個人的には」と前置きする
-3. ユーザーの元メモと繋がってるか？ → 繋がってないなら脱線してる
-4. 数字や期間を断定してないか？ → 根拠がないなら「体感だけど」と前置きする`;
+3. ユーザーの元メモと繋がっているか？ → 繋がっていないなら脱線している
+4. 数字や期間を断定していないか？ → 根拠がないなら「体感だが」と前置きする`;
 }
 
 // P4 初期メッセージ生成用systemプロンプト
@@ -321,12 +322,13 @@ export async function POST(request: NextRequest) {
 
               // contextからsystem prompt構築（inlineContextをフォールバックとして使用）
               const chatContext = buildChatContext(context?.connectionId, inlineContext);
-              if (!chatContext) throw new Error("Chat context not found");
-              const systemPrompt = buildDeepDiveSystemPrompt(chatContext, currentTurn);
+              const systemPrompt = chatContext
+                ? buildDeepDiveSystemPrompt(chatContext, currentTurn)
+                : `あなたはユーザーの気づきを掘り下げる対話相手。落ち着いた知性を感じさせる語り口で、だ・である調で応答する。1応答は3-5文。箇条書き禁止。現在 ${currentTurn}/5 ターン目。`;
 
               // 検索が必要か判定
               let extraContext = "";
-              if (shouldSearch(message, currentTurn)) {
+              if (chatContext && shouldSearch(message, currentTurn)) {
                 const { groundingSearchWithText } = await import("@/lib/ai/gemini");
                 const query = `${message} ${chatContext.connection.title}`;
                 const { text } = await groundingSearchWithText(query.slice(0, 200));

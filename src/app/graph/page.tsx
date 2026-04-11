@@ -642,7 +642,27 @@ export default function GraphPage() {
           node={selectedNode}
           connections={!selectedNode.isKnowledge ? getNodeConnections(selectedNode.id) : []}
           onDetail={() => { if (!selectedNode.isKnowledge) router.push(`/memo/${selectedNode.id}`); }}
-          onDeepDive={(connId) => router.push(`/chat?connection=${connId}`)}
+          onDeepDive={(connId) => {
+            // チャットコンテキストをlocalStorageに保存
+            if (selectedNode) {
+              const parentIdea = selectedNode.isKnowledge && selectedNode.parentIdeaId
+                ? nodes.find(n => n.id === selectedNode.parentIdeaId)
+                : selectedNode;
+              const knowledgeNode = selectedNode.isKnowledge
+                ? selectedNode
+                : nodes.find(n => n.isKnowledge && n.parentIdeaId === selectedNode.id && n.id === `k-${connId}`);
+              try {
+                localStorage.setItem(`chat_ctx_${connId}`, JSON.stringify({
+                  memo_summary: parentIdea?.summary ?? "",
+                  memo_abstract_principle: "",
+                  memo_latent_question: "",
+                  connection_title: knowledgeNode?.knowledgeTitle ?? "",
+                  connection_description: knowledgeNode?.knowledgeDescription ?? "",
+                }));
+              } catch {}
+            }
+            router.push(`/chat?connection=${connId}`);
+          }}
           onDeepDiveSingle={() => router.push(`/chat?idea=${selectedNode.id}`)}
           onCombine={handleStartCombine}
         />
