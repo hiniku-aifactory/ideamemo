@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
 
       try {
         // 0. メモ上限チェック
-        const userId = MOCK_MODE ? "mock-user-001" : "TODO";
+        // Supabase未接続のためmockユーザーIDを使用
+        const userId = "mock-user-001";
         const currentCount = MOCK_MODE
           ? mockDb.ideas.listByUser(userId).length
           : 0;
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
 
         const idea: Idea = {
           id: ideaId,
-          user_id: MOCK_MODE ? "mock-user-001" : "TODO",
+          user_id: "mock-user-001",
           transcript,
           summary: structured.summary,
           keywords: structured.keywords,
