@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
+import { ContextHeader } from "@/components/chat/context-header";
 import { mockDb } from "@/lib/mock/db";
 import type { ChatSession, ChatMessage } from "@/lib/mock/db";
 import type { ChatInsight, Idea, Connection } from "@/lib/types";
@@ -71,8 +72,9 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
   const [sending, setSending] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(sessionId);
   const [streamingContent, setStreamingContent] = useState("");
-  const [contextExpanded, setContextExpanded] = useState(false);
-  const [contextSummary, setContextSummary] = useState<string | null>(null);
+  const [contextIdeas, setContextIdeas] = useState<{
+    from: Idea | null; to: Idea | null; connection: Connection | null;
+  }>({ from: null, to: null, connection: null });
   const [insights, setInsights] = useState<ChatInsight[]>([]);
   const [insightLoading, setInsightLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -87,7 +89,7 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
       setMessages(existingMessages);
       setCurrentSessionId(sessionId);
       const session = mockDb.chatSessions.get(sessionId);
-      if (session) setContextSummary(session.context_summary);
+      if (session) { /* context_summary は ContextHeader で表示 */ void session; }
     } else if (connectionId) {
       // 既存セッションがあるか確認
       const existing = mockDb.chatSessions.findByConnection(connectionId);
@@ -95,7 +97,6 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
         const existingMessages = mockDb.chatMessages.listBySession(existing.id);
         setMessages(existingMessages);
         setCurrentSessionId(existing.id);
-        setContextSummary(existing.context_summary);
       } else {
         // 新規セッション作成
         initNewSession(connectionId);
@@ -103,6 +104,20 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, connectionId]);
+
+  // コンテキストideas取得
+  useEffect(() => {
+    const cid = connectionId ?? (() => {
+      if (!currentSessionId) return null;
+      const session = mockDb.chatSessions.get(currentSessionId);
+      return session?.connection_id ?? null;
+    })();
+    if (!cid) return;
+    const conn = mockDb.connections.list().find((c) => c.id === cid) ?? null;
+    const from = conn ? mockDb.ideas.get(conn.idea_from_id) ?? null : null;
+    const to = conn?.idea_to_id ? mockDb.ideas.get(conn.idea_to_id) ?? null : null;
+    setContextIdeas({ from, to, connection: conn });
+  }, [currentSessionId, connectionId]);
 
   // スクロール
   useEffect(() => {
@@ -142,8 +157,6 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
 
           if (event === "session") {
             setCurrentSessionId(data.sessionId);
-            const session = mockDb.chatSessions.get(data.sessionId);
-            if (session) setContextSummary(session.context_summary);
           } else if (event === "message") {
             setMessages((prev) => [
               ...prev,
@@ -357,36 +370,7 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
         </div>
       )}
 
-      {/* コンテキストバー */}
-      {contextSummary && (
-        <div
-          className="mx-4 mb-2 rounded-lg overflow-hidden"
-          style={{ background: "var(--bg-secondary)" }}
-        >
-          <button
-            onClick={() => setContextExpanded(!contextExpanded)}
-            className="w-full flex items-center gap-2 p-2.5 text-left"
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <circle cx="6" cy="4" r="3" stroke="var(--text-muted)" strokeWidth="0.7" />
-              <line x1="6" y1="7" x2="6" y2="11" stroke="var(--text-muted)" strokeWidth="0.7" />
-            </svg>
-            <span
-              className={`flex-1 text-xs ${contextExpanded ? "" : "line-clamp-1"}`}
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {contextSummary}
-            </span>
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              {contextExpanded ? (
-                <path d="M3 9L7 5L11 9" stroke="var(--text-muted)" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round" />
-              ) : (
-                <path d="M3 5L7 9L11 5" stroke="var(--text-muted)" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round" />
-              )}
-            </svg>
-          </button>
-        </div>
-      )}
+      <ContextHeader ideaFrom={contextIdeas.from} ideaTo={contextIdeas.to} connection={contextIdeas.connection} />
 
       {/* メッセージ一覧 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
