@@ -151,59 +151,57 @@ export async function POST(request: NextRequest) {
             userId,
           });
 
-          for (const { domain, novelty } of domains) {
-            try {
-              const result = await generateSingleConnection(
-                {
-                  summary: structured.summary,
-                  keywords: structured.keywords,
-                  abstract_principle: structured.abstract_principle,
-                  domain: structured.domain ?? "その他",
-                  transcript,
-                  personaId: primaryPersona,
-                  userId,
-                },
-                domain,
-                novelty,
-              );
-            const conn: Connection = {
-              id: crypto.randomUUID(),
-              idea_from_id: ideaId,
-              idea_to_id: null,
-              connection_type: "external_knowledge",
-              source: "ai",
-              persona_label: result.search_domain,
-              reason: result.description,
-              action_suggestion: "",
-              quality_score: result.quality_score,
-              external_knowledge_title: result.title,
-              external_knowledge_url: result.source_url,
-              external_knowledge_summary: result.description,
-              source_idea_summary: null,
-              user_note: null,
-              feedback: null,
-              feedback_at: null,
-              bookmarked: false,
-              created_at: now,
-            };
+          // 3ドメインを並列実行 — 完了次第即SSE送信（逐次より約3倍速い）
+          const pipelineInput = {
+            summary: structured.summary,
+            keywords: structured.keywords,
+            abstract_principle: structured.abstract_principle,
+            domain: structured.domain ?? "その他",
+            transcript,
+            personaId: primaryPersona,
+            userId,
+          };
 
-            // Supabase未接続のためモード問わずmockDbに保存
-            mockDb.connections.insert(conn);
-
-            send("connection", {
-              id: conn.id,
-              title: result.title,
-              description: result.description,
-              source_url: result.source_url,
-              source_title: result.source_title,
-              quality_score: result.quality_score,
-              bookmarked: false,
-              connection_type: "external_knowledge",
-            });
-            } catch (e) {
-              console.error(`[A01] Connection generation failed for domain ${domain}:`, e);
-            }
-          }
+          await Promise.all(
+            domains.map(async ({ domain, novelty }) => {
+              try {
+                const result = await generateSingleConnection(pipelineInput, domain, novelty);
+                const conn: Connection = {
+                  id: crypto.randomUUID(),
+                  idea_from_id: ideaId,
+                  idea_to_id: null,
+                  connection_type: "external_knowledge",
+                  source: "ai",
+                  persona_label: result.search_domain,
+                  reason: result.description,
+                  action_suggestion: "",
+                  quality_score: result.quality_score,
+                  external_knowledge_title: result.title,
+                  external_knowledge_url: result.source_url,
+                  external_knowledge_summary: result.description,
+                  source_idea_summary: null,
+                  user_note: null,
+                  feedback: null,
+                  feedback_at: null,
+                  bookmarked: false,
+                  created_at: now,
+                };
+                mockDb.connections.insert(conn);
+                send("connection", {
+                  id: conn.id,
+                  title: result.title,
+                  description: result.description,
+                  source_url: result.source_url,
+                  source_title: result.source_title,
+                  quality_score: result.quality_score,
+                  bookmarked: false,
+                  connection_type: "external_knowledge",
+                });
+              } catch (e) {
+                console.error(`[A01] Connection generation failed for domain ${domain}:`, e);
+              }
+            })
+          );
         }
 
         // プロファイル自動更新チェック（非同期、レスポンスをブロックしない）
