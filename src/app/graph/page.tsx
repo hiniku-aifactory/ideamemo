@@ -299,17 +299,14 @@ export default function GraphPage() {
     setCombineNodeA(null);
   }, []);
 
-  // ---- ノードの全接続取得 ----
+  // ---- ノードのアイデア間接続取得（外部知識は除外。外部知識ノードは直接タップで深掘り） ----
   const getNodeConnections = useCallback((nodeId: string) => {
     return allConnections
       .filter((c) => {
-        if (c.connection_type === "external_knowledge") return c.idea_from_id === nodeId;
+        if (c.connection_type === "external_knowledge") return false;
         return (c.idea_from_id === nodeId && c.idea_to_id) || c.idea_to_id === nodeId;
       })
       .map((c) => {
-        if (c.connection_type === "external_knowledge") {
-          return { id: c.id, targetSummary: c.external_knowledge_title ?? "外部知識" };
-        }
         const targetId = c.idea_from_id === nodeId ? c.idea_to_id! : c.idea_from_id;
         const targetIdea = allIdeas.find((i) => i.id === targetId);
         return { id: c.id, targetSummary: targetIdea?.graph_label || targetIdea?.summary || "" };
