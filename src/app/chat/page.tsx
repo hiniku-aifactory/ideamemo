@@ -373,12 +373,13 @@ function ChatView({ sessionId, connectionId, ideaId }: { sessionId?: string; con
 
       {/* 単体メモ深掘りのコンテキストヘッダー */}
       {ideaId && contextIdeas.from && !contextIdeas.connection && (
-        <div className="mx-4 mb-2 rounded-lg p-3"
+        <div className="mx-4 mb-2 rounded-lg px-3 py-2.5"
           style={{ background: "var(--bg-secondary)", border: "0.5px solid var(--border-light)" }}>
+          <p className="text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>深掘り対象</p>
           <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
-            {contextIdeas.from.summary.slice(0, 24)}{contextIdeas.from.summary.length > 24 ? "…" : ""}
+            {(contextIdeas.from.graph_label || contextIdeas.from.summary).slice(0, 30)}
+            {(contextIdeas.from.graph_label || contextIdeas.from.summary).length > 30 ? "…" : ""}
           </p>
-          <p className="text-[10px] mt-0.5" style={{ color: "var(--text-muted)" }}>このメモを深掘り</p>
         </div>
       )}
 
