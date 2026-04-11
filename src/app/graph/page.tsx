@@ -324,11 +324,13 @@ export default function GraphPage() {
     const g = svg.append("g").attr("class", "canvas");
 
     // zoom
+    const ZOOM_STORAGE_KEY = "graph-zoom-transform";
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 4])
       .on("zoom", (event) => {
         g.attr("transform", event.transform);
-        const k = event.transform.k;
+        const { x, y, k } = event.transform;
+        sessionStorage.setItem(ZOOM_STORAGE_KEY, JSON.stringify({ x, y, k }));
 
         // タグラベル LOD
         g.selectAll<SVGTextElement, TagCluster>(".tag-label")
@@ -451,22 +453,31 @@ export default function GraphPage() {
       if (event.target === svgRef.current) handleBackgroundTapRef.current();
     });
 
-    // 初期 fit-all（アニメーションなし）
-    const xs = nodes.map((n) => n.x);
-    const ys = nodes.map((n) => n.y);
-    const minX = Math.min(...xs) - 60;
-    const maxX = Math.max(...xs) + 60;
-    const minY = Math.min(...ys) - 60;
-    const maxY = Math.max(...ys) + 60;
-    const contentW = maxX - minX;
-    const contentH = maxY - minY;
-    const initScale = Math.min(dimensions.width / contentW, dimensions.height / contentH, 1.2) * 0.9;
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
-    const initTx = d3.zoomIdentity
-      .translate(dimensions.width / 2 - cx * initScale, dimensions.height / 2 - cy * initScale)
-      .scale(initScale);
-    svg.call(zoom.transform, initTx);
+    // 初期変換: sessionStorage に保存済みがあれば復元、なければ fit-all
+    const savedTransform = sessionStorage.getItem(ZOOM_STORAGE_KEY);
+    if (savedTransform) {
+      try {
+        const { x, y, k } = JSON.parse(savedTransform) as { x: number; y: number; k: number };
+        svg.call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(k));
+      } catch {
+        sessionStorage.removeItem(ZOOM_STORAGE_KEY);
+      }
+    } else {
+      const xs = nodes.map((n) => n.x);
+      const ys = nodes.map((n) => n.y);
+      const minX = Math.min(...xs) - 60;
+      const maxX = Math.max(...xs) + 60;
+      const minY = Math.min(...ys) - 60;
+      const maxY = Math.max(...ys) + 60;
+      const contentW = maxX - minX;
+      const contentH = maxY - minY;
+      const initScale = Math.min(dimensions.width / contentW, dimensions.height / contentH, 1.2) * 0.9;
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      svg.call(zoom.transform,
+        d3.zoomIdentity.translate(dimensions.width / 2 - cx * initScale, dimensions.height / 2 - cy * initScale).scale(initScale)
+      );
+    }
 
   }, [nodes, clusters, baseLinks, dimensions]);
 
