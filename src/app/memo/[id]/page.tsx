@@ -154,6 +154,8 @@ export default function MemoDetailPage({ params }: Props) {
                   onBookmark={() => {
                     fetch(`/api/connections/${conn.id}/bookmark`, { method: "POST" });
                   }}
+                  connectionId={conn.id}
+                  onDeepDive={(connId) => router.push(`/chat?connection=${connId}`)}
                 />
               ))}
             </section>

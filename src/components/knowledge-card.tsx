@@ -9,6 +9,8 @@ interface Props {
   sourceTitle?: string | null;
   bookmarked?: boolean;
   onBookmark?: () => void;
+  connectionId?: string;
+  onDeepDive?: (connId: string) => void;
 }
 
 // ♡ ブックマークアイコン
@@ -31,7 +33,7 @@ function BookmarkHeart({ filled, size = 14 }: { filled: boolean; size?: number }
   );
 }
 
-export function KnowledgeCard({ title, description, sourceUrl, sourceTitle, bookmarked = false, onBookmark }: Props) {
+export function KnowledgeCard({ title, description, sourceUrl, sourceTitle, bookmarked = false, onBookmark, connectionId, onDeepDive }: Props) {
   const [isBookmarked, setIsBookmarked] = useState(bookmarked);
 
   const handleBookmark = () => {
@@ -77,23 +79,32 @@ export function KnowledgeCard({ title, description, sourceUrl, sourceTitle, book
         </p>
 
         <div className="flex items-center justify-between mt-2">
-          {sourceUrl ? (
-            <a
-              href={sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px]"
-              style={{ color: "var(--accent)" }}
-            >
-              {sourceTitle || sourceUrl} ↗
-            </a>
-          ) : sourceTitle ? (
-            <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-              {sourceTitle}
-            </span>
-          ) : (
-            <span />
-          )}
+          <div className="flex items-center gap-3">
+            {sourceUrl ? (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px]"
+                style={{ color: "var(--accent)" }}
+              >
+                {sourceTitle || sourceUrl} ↗
+              </a>
+            ) : sourceTitle ? (
+              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+                {sourceTitle}
+              </span>
+            ) : (
+              <span />
+            )}
+
+            {connectionId && onDeepDive && (
+              <button onClick={() => onDeepDive(connectionId)}
+                className="text-[10px]" style={{ color: "var(--accent)" }}>
+                深掘り →
+              </button>
+            )}
+          </div>
 
           <button
             onClick={handleBookmark}
