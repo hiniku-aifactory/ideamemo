@@ -62,8 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (useLocalAuth) {
       localStorage.setItem("mock_logged_in", "true");
       setUser(MOCK_USER as User);
-      const settings = mockDb.userSettings.get("mock-user-001");
-      window.location.href = settings?.personas?.length ? "/" : "/onboarding";
+      // ペルソナはlocalStorageに永続化（mockDbはページリロードでリセットされる）
+      const savedPersonas = (() => { try { return JSON.parse(localStorage.getItem("user_personas") ?? "null"); } catch { return null; } })();
+      window.location.href = savedPersonas?.length ? "/" : "/onboarding";
       return;
     }
     const { createClient } = await import("@/lib/supabase/client");
@@ -78,8 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (useLocalAuth) {
       localStorage.setItem("mock_logged_in", "true");
       setUser(MOCK_USER as User);
-      const settings = mockDb.userSettings.get("mock-user-001");
-      window.location.href = settings?.personas?.length ? "/" : "/onboarding";
+      const savedPersonas = (() => { try { return JSON.parse(localStorage.getItem("user_personas") ?? "null"); } catch { return null; } })();
+      window.location.href = savedPersonas?.length ? "/" : "/onboarding";
       return {};
     }
     const { createClient } = await import("@/lib/supabase/client");

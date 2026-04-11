@@ -13,8 +13,12 @@ export default function OnboardingPage() {
   async function handleSubmit() {
     if (selected.length === 0) return;
 
-    if (MOCK_MODE) {
-      mockDb.userSettings.update("mock-user-001", { personas: selected });
+    // ペルソナをmockDbとlocalStorageの両方に保存（ページリロード後も維持）
+    mockDb.userSettings.update("mock-user-001", { personas: selected });
+    try { localStorage.setItem("user_personas", JSON.stringify(selected)); } catch {}
+
+    if (!MOCK_MODE) {
+      // リアルモードでは/recordへ直接遷移（mockDbはページリロードでリセットされるため）
     }
 
     router.push("/record?auto=true");
