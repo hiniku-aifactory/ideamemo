@@ -428,18 +428,18 @@ export default function GraphPage() {
       .attr("stroke", "var(--border)")
       .attr("stroke-width", 0.5);
 
-    // graph_label（初期opacity:0 → LODで更新）
+    // graph_label（ノード円の下に表示。初期opacity:0 → LODで更新）
     nodeGroups.append("text")
       .attr("class", "node-label")
       .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "central")
-      .attr("font-size", "10px")
+      .attr("dy", (d) => d.r + 11)
+      .attr("font-size", "9px")
       .attr("fill", "var(--text-secondary)")
       .attr("pointer-events", "none")
       .attr("opacity", 0)
       .text((d) => {
         const label = d.graphLabel || d.summary;
-        return label.length > 7 ? label.slice(0, 7) + "…" : label;
+        return label.length > 4 ? label.slice(0, 4) + "…" : label;
       });
 
     // 背景タップ
