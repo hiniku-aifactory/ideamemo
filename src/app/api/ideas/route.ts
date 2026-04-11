@@ -83,6 +83,8 @@ export async function POST(request: NextRequest) {
           audio_url: null,
           folder_id: null,
           folder_name: autoFolderName(structured.domain),
+          source: "voice",
+          parent_session_id: null,
           created_at: now,
         };
 

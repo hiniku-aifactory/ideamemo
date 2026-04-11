@@ -16,6 +16,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-04-08T08:12:00Z",
   },
   {
@@ -31,6 +33,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-04-07T14:30:00Z",
   },
   {
@@ -46,6 +50,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-04-06T10:45:00Z",
   },
   {
@@ -61,6 +67,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-04-05T18:20:00Z",
   },
   {
@@ -76,6 +84,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-04-04T19:50:00Z",
   },
   {
@@ -91,6 +101,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-04-03T07:30:00Z",
   },
   {
@@ -106,6 +118,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-04-02T22:10:00Z",
   },
 
@@ -124,6 +138,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-04-01T12:30:00Z",
   },
   {
@@ -139,6 +155,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-03-31T16:45:00Z",
   },
   {
@@ -154,6 +172,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-03-30T09:15:00Z",
   },
   {
@@ -169,6 +189,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-03-29T13:20:00Z",
   },
   {
@@ -184,6 +206,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-03-28T20:00:00Z",
   },
   {
@@ -199,6 +223,8 @@ export const SEED_IDEAS: Idea[] = [
     audio_url: null,
     folder_id: null,
     folder_name: null,
+    source: "voice",
+    parent_session_id: null,
     created_at: "2026-03-27T17:30:00Z",
   },
 ];

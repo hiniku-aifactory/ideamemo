@@ -2,7 +2,11 @@ export type Domain = "仕事" | "生活" | "趣味" | "学び" | "人間関係" 
 
 export type ConnectionType =
   | "external_knowledge"
-  | "combination";
+  | "combination"
+  | "manual"
+  | "chat_derived";
+
+export type IdeaSource = "voice" | "chat_insight";
 
 export interface Idea {
   id: string;
@@ -16,6 +20,8 @@ export interface Idea {
   audio_url: string | null;
   folder_id: string | null;
   folder_name: string | null;
+  source: IdeaSource;
+  parent_session_id: string | null;
   created_at: string;
 }
 
@@ -37,6 +43,16 @@ export interface Connection {
   feedback: "positive" | "negative" | null;
   feedback_at: string | null;
   bookmarked: boolean;
+  created_at: string;
+}
+
+export interface ChatInsight {
+  id: string;
+  session_id: string;
+  summary: string;
+  full_text: string;
+  keywords: string[];
+  status: "suggested" | "accepted" | "dismissed";
   created_at: string;
 }
 
