@@ -18,6 +18,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "合理性の罠",
+    tags: ["行動設計", "集団心理"],
     created_at: "2026-04-08T08:12:00Z",
   },
   {
@@ -35,6 +37,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "密度の逆説",
+    tags: ["空間設計", "行動設計"],
     created_at: "2026-04-07T14:30:00Z",
   },
   {
@@ -52,6 +56,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "最初の一歩",
+    tags: ["集団心理", "行動設計"],
     created_at: "2026-04-06T10:45:00Z",
   },
   {
@@ -69,6 +75,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "理解と伝達",
+    tags: ["認知構造", "コミュニケーション"],
     created_at: "2026-04-05T18:20:00Z",
   },
   {
@@ -86,6 +94,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "制約の触媒",
+    tags: ["創造プロセス"],
     created_at: "2026-04-04T19:50:00Z",
   },
   {
@@ -103,6 +113,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "角度の力",
+    tags: ["認知構造", "創造プロセス"],
     created_at: "2026-04-03T07:30:00Z",
   },
   {
@@ -120,6 +132,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "最適化の罠",
+    tags: ["情報設計", "行動設計"],
     created_at: "2026-04-02T22:10:00Z",
   },
 
@@ -140,6 +154,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "配置の支配",
+    tags: ["空間設計", "行動設計"],
     created_at: "2026-04-01T12:30:00Z",
   },
   {
@@ -157,6 +173,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "物語の力",
+    tags: ["コミュニケーション"],
     created_at: "2026-03-31T16:45:00Z",
   },
   {
@@ -174,6 +192,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "引き算の知覚",
+    tags: ["認知構造"],
     created_at: "2026-03-30T09:15:00Z",
   },
   {
@@ -191,6 +211,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "説明の鏡",
+    tags: ["認知構造", "コミュニケーション"],
     created_at: "2026-03-29T13:20:00Z",
   },
   {
@@ -208,6 +230,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "障壁の価値",
+    tags: ["情報設計"],
     created_at: "2026-03-28T20:00:00Z",
   },
   {
@@ -225,6 +249,8 @@ export const SEED_IDEAS: Idea[] = [
     folder_name: null,
     source: "voice",
     parent_session_id: null,
+    graph_label: "偶然の設計",
+    tags: ["創造プロセス"],
     created_at: "2026-03-27T17:30:00Z",
   },
 ];

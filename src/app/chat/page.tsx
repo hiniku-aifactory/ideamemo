@@ -234,6 +234,8 @@ function ChatView({ sessionId, connectionId }: { sessionId?: string; connectionI
         folder_name: null,
         source: "chat_insight",
         parent_session_id: currentSessionId ?? null,
+        graph_label: "",
+        tags: [],
         created_at: new Date().toISOString(),
       };
       mockDb.ideas.insert(newIdea);

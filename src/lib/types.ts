@@ -22,6 +22,8 @@ export interface Idea {
   folder_name: string | null;
   source: IdeaSource;
   parent_session_id: string | null;
+  graph_label: string;
+  tags: string[];
   created_at: string;
 }
 

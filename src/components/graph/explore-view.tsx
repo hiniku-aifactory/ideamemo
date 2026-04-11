@@ -110,8 +110,8 @@ export function ExploreView({ rootId }: ExploreViewProps) {
           : nodePositions.get(expandedId) ?? { x: dimensions.width / 2, y: dimensions.height / 2 };
         const connCount = connCountMap.get(expandedId) || 0;
         nodes.push({
-          id: expandedId, summary: idea.summary, keywords: idea.keywords,
-          created_at: idea.created_at, r: expandedId === centerNodeId ? 42 : calcNodeRadius(connCount),
+          id: expandedId, summary: idea.summary, graphLabel: idea.graph_label, keywords: idea.keywords,
+          tags: idea.tags, created_at: idea.created_at, r: expandedId === centerNodeId ? 42 : calcNodeRadius(connCount),
           x: pos.x, y: pos.y, isKnowledge: false, connCount,
         });
         nodePositions.set(expandedId, pos);
@@ -146,7 +146,8 @@ export function ExploreView({ rootId }: ExploreViewProps) {
           const connCount = connCountMap.get(neighborId) || 0;
           const pos = positions[i];
           nodes.push({
-            id: neighborId, summary: neighborIdea.summary, keywords: neighborIdea.keywords,
+            id: neighborId, summary: neighborIdea.summary, graphLabel: neighborIdea.graph_label,
+            keywords: neighborIdea.keywords, tags: neighborIdea.tags,
             created_at: neighborIdea.created_at, r: calcNodeRadius(connCount),
             x: pos.x, y: pos.y, isKnowledge: false, connCount,
           });
@@ -166,8 +167,8 @@ export function ExploreView({ rootId }: ExploreViewProps) {
           const kId = `k-${c.id}`;
           const pos = kPositions[i];
           nodes.push({
-            id: kId, summary: c.external_knowledge_title ?? "", keywords: [],
-            created_at: c.created_at, r: 14, x: pos.x, y: pos.y,
+            id: kId, summary: c.external_knowledge_title ?? "", graphLabel: "", keywords: [],
+            tags: [], created_at: c.created_at, r: 14, x: pos.x, y: pos.y,
             isKnowledge: true, knowledgeTitle: c.external_knowledge_title ?? "",
             knowledgeDescription: c.external_knowledge_summary ?? "",
             knowledgeUrl: c.external_knowledge_url, parentIdeaId: expandedId, connCount: 0,

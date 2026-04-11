@@ -23,6 +23,8 @@ export interface Structured {
   abstract_principle: string;
   latent_question: string;
   domain: string;
+  graph_label?: string;
+  tags?: string[];
 }
 
 export async function structure(_transcript: string): Promise<Structured> {

@@ -3,7 +3,9 @@ import type { ConnectionType } from "@/lib/types";
 export interface GraphNode {
   id: string;
   summary: string;
+  graphLabel: string;
   keywords: string[];
+  tags: string[];
   created_at: string;
   r: number;
   x: number;
@@ -24,10 +26,11 @@ export interface GraphLink {
   connectionType: ConnectionType | "knowledge_link";
 }
 
-export interface ExploreState {
-  centerNodeId: string;
-  expandedNodeIds: Set<string>;
-  nodePositions: Map<string, { x: number; y: number }>;
-  visibleNodes: GraphNode[];
-  visibleLinks: GraphLink[];
+export interface TagCluster {
+  tag: string;
+  nodeCount: number;
+  ideaIds: string[];
+  x: number;
+  y: number;
+  r: number;
 }

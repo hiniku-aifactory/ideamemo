@@ -85,6 +85,8 @@ export async function POST(request: NextRequest) {
           folder_name: autoFolderName(structured.domain),
           source: "voice",
           parent_session_id: null,
+          graph_label: structured.graph_label ?? "",
+          tags: structured.tags ?? [],
           created_at: now,
         };
 
