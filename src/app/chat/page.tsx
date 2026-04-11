@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { ContextHeader } from "@/components/chat/context-header";
-import { SuggestButtons } from "@/components/chat/suggest-buttons";
 import { mockDb } from "@/lib/mock/db";
 import type { ChatSession, ChatMessage } from "@/lib/mock/db";
 import type { ChatInsight, Idea, Connection } from "@/lib/types";
@@ -396,24 +395,55 @@ function ChatView({ sessionId, connectionId, ideaId }: { sessionId?: string; con
 
       {/* メッセージ一覧 */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
-        {messages.map((msg) => (
-          <div key={msg.id}>
-            {msg.role === "assistant" ? (
-              <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)", lineHeight: 1.7 }}>
-                {msg.content}
-              </p>
-            ) : (
-              <div className="flex justify-end">
-                <p
-                  className="text-sm rounded-2xl px-3.5 py-2.5 max-w-[80%]"
-                  style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
-                >
+        {messages.map((msg, msgIdx) => {
+          const isFirstAssistant = msg.role === "assistant" && msgIdx === 0;
+          const hasUserMessages = messages.some((m) => m.role === "user");
+
+          // 初期メッセージの「・」行をボタン化（ユーザー未発言時のみ）
+          if (isFirstAssistant && !hasUserMessages && msg.content.includes("・")) {
+            const lines = msg.content.split("\n");
+            const greeting = lines.filter((l) => !l.startsWith("・") && l.trim()).join("\n");
+            const questions = lines.filter((l) => l.startsWith("・")).map((l) => l.slice(1).trim());
+
+            return (
+              <div key={msg.id} className="space-y-3">
+                {greeting && (
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)", lineHeight: 1.7 }}>
+                    {greeting}
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {questions.map((q, i) => (
+                    <button key={i} onClick={() => { handleSuggestSelect(q); }}
+                      className="w-full text-left rounded-2xl px-4 py-2.5"
+                      style={{ background: "var(--bg-tertiary)" }}>
+                      <span className="text-[13px]" style={{ color: "var(--text-body)" }}>{q}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+
+          return (
+            <div key={msg.id}>
+              {msg.role === "assistant" ? (
+                <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)", lineHeight: 1.7 }}>
                   {msg.content}
                 </p>
-              </div>
-            )}
-          </div>
-        ))}
+              ) : (
+                <div className="flex justify-end">
+                  <p
+                    className="text-sm rounded-2xl px-3.5 py-2.5 max-w-[80%]"
+                    style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
+                  >
+                    {msg.content}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {/* ストリーミング中の表示 */}
         {streamingContent && (
@@ -429,16 +459,6 @@ function ChatView({ sessionId, connectionId, ideaId }: { sessionId?: string; con
             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--text-muted)", animationDelay: "0.2s" }} />
             <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "var(--text-muted)", animationDelay: "0.4s" }} />
           </div>
-        )}
-
-        {/* 初期サジェスト */}
-        {messages.filter((m) => m.role === "user").length === 0 && (connectionId || contextIdeas.connection) && !suggestDismissed && (
-          <SuggestButtons type="initial" onSelect={handleSuggestSelect} />
-        )}
-
-        {/* フォローアップサジェスト */}
-        {followUpShown && !followUpDismissed && !sending && (
-          <SuggestButtons type="followUp" onSelect={handleFollowUpSelect} />
         )}
       </div>
 
